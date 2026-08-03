@@ -7,65 +7,59 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <div class="window-frame">
-        <div class="titlebar">
-          <div class="titlebar-left">
-            <span class="window-icon">▣</span>
-            <span class="window-title">Escape the Office</span>
-          </div>
-          <div class="window-controls" aria-hidden="true">
-            <span class="control control-min"></span>
-            <span class="control control-max"></span>
-            <span class="control control-close"></span>
-          </div>
+    <div class="frame">
+      <div class="titlebar">
+        <div class="titlebar-left">
+          <span class="icon">◼</span>
+          <span>Escape the Office</span>
         </div>
-
-        <div class="workspace">
-          <aside class="left-panel">
-            <div class="portrait-card">
-              <div class="portrait-placeholder">worker portrait</div>
-              <div class="portrait-name">Jamie</div>
-            </div>
-          </aside>
-
-          <section class="main-panel">
-            <div class="story-wrapper">
-              <div class="status-column" aria-label="status bars">
-                <div class="status-block">
-                  <div class="status-label">Time Left</div>
-                  <div class="status-track vertical">
-                    <div class="status-fill fill-time"></div>
-                  </div>
-                  <div id="time-display" class="status-value">4:50 PM</div>
-                </div>
-
-                <div class="status-block">
-                  <div class="status-label">HP</div>
-                  <div class="status-track vertical">
-                    <div class="status-fill fill-hp"></div>
-                  </div>
-                  <div id="legibility-display" class="status-value">0%</div>
-                </div>
-              </div>
-
-              <div class="story-card">
-                <section id="story" class="story" aria-live="polite"></section>
-              </div>
-            </div>
-
-            <form id="input-form" class="input-row">
-              <label for="player-input">&gt;</label>
-              <input id="player-input" name="player-input" type="text" autocomplete="off" placeholder="Type what Jamie does..." />
-              <button type="submit">Send</button>
-            </form>
-
-            <button id="restart-button" class="restart-button" type="button">Restart</button>
-          </section>
+        <div class="titlebar-right">
+          <span class="dot dot-red"></span>
+          <span class="dot dot-yellow"></span>
+          <span class="dot dot-green"></span>
         </div>
+      </div>
+
+      <div class="workspace">
+        <aside class="sidebar">
+          <div id="portrait" class="portrait">PHOTO ID</div>
+          <div class="stat-card">
+            <div class="stat-label">TIME</div>
+            <div class="bar"><div id="time-bar" class="bar-fill"></div></div>
+            <div id="time-display" class="stat-value">3:50 PM</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">FOCUS</div>
+            <div class="bar"><div id="hp-bar" class="bar-fill hp-fill"></div></div>
+            <div id="hp-display" class="stat-value">100%</div>
+          </div>
+        </aside>
+
+        <main class="main-panel">
+          <div id="output" class="output"></div>
+          <div id="choice-container" class="choice-container hidden"></div>
+          <form id="input-form" class="input-form">
+            <span class="prompt-symbol">&gt;</span>
+            <input id="player-input" type="text" autocomplete="off" placeholder="type your response" />
+            <button type="submit">SEND</button>
+          </form>
+          <button id="restart-button" class="restart-button" type="button">RESTART</button>
+        </main>
       </div>
     </div>
 
+    <div id="overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <h1 id="overlay-title">REPLAK.AI</h1>
+        <p id="overlay-message">Please authenticate your credentials.</p>
+        <form id="overlay-form" class="overlay-form">
+          <input id="overlay-input" type="text" autocomplete="off" />
+          <button type="submit">SUBMIT</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
     <script src="game.js"></script>
   </body>
 </html>
