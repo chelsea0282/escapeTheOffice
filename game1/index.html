@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>(ESC)APE</title>
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+
+<!-- ============================================================
+     Structure only. Every visual decision lives in theme.css.
+     ============================================================ -->
+
+<div id="crt">
+
+  <!-- ---------- TITLE CARD ---------- -->
+  <section id="title-card" class="fullscreen">
+    <pre id="title-art"></pre>
+    <div id="title-by">
+      <p>By</p>
+      <p class="title-authors">CHELSEA HAN &amp; TIFFANY QUON</p>
+      <p class="title-date">Date: Aug 3, 2026 (latest ver)</p>
+    </div>
+    <p id="title-prompt" class="blink">PRESS ANY KEY TO CONNECT</p>
+  </section>
+
+  <!-- ---------- LOGIN ---------- -->
+  <section id="login" class="fullscreen hidden">
+    <pre id="login-brand"></pre>
+    <div id="login-body"></div>
+  </section>
+
+  <!-- ---------- BOOT ---------- -->
+  <section id="boot" class="fullscreen hidden">
+    <pre id="boot-field"></pre>
+  </section>
+
+  <!-- ---------- MAIN GAMEPLAY ---------- -->
+  <main id="game" class="hidden">
+
+    <!-- Top-left: photo ID + stats + world-building -->
+    <aside id="id-panel">
+      <div id="id-photo-frame">
+        <pre id="id-photo"></pre>
+      </div>
+      <p id="id-name">————</p>
+      <p id="id-role">PRODUCT MANAGER</p>
+
+      <div id="id-stats">
+        <p class="panel-heading">STATS</p>
+        <pre id="id-stat-list"></pre>
+      </div>
+
+      <div id="id-bio">
+        <p class="panel-heading">FILE</p>
+        <p id="id-bio-text"></p>
+      </div>
+
+      <button id="info-button" type="button">[ i ] PERSONNEL FILE</button>
+    </aside>
+
+    <!-- Right: gauges over the terminal -->
+    <div id="stage">
+
+      <div id="gauges">
+        <div class="gauge" data-gauge="hp">
+          <span class="gauge-label">HP</span>
+          <div class="gauge-track"><div class="gauge-fill"></div></div>
+          <span class="gauge-value">—</span>
+        </div>
+        <div class="gauge" data-gauge="time">
+          <span class="gauge-label">TIME LEFT</span>
+          <div class="gauge-track"><div class="gauge-fill"></div></div>
+          <span class="gauge-value">—</span>
+        </div>
+      </div>
+
+      <div id="terminal">
+        <div id="terminal-scroll"></div>
+      </div>
+
+      <!-- Player input surface -->
+      <div id="input-bar" class="hidden">
+        <span id="input-prompt">&gt;</span>
+        <div id="input-field">
+          <span id="input-ghost"></span>
+          <span id="input-typed"></span>
+          <span id="input-caret" class="blink">_</span>
+        </div>
+      </div>
+      <p id="input-hint"></p>
+
+    </div>
+  </main>
+
+  <!-- ---------- REPLAK.AI MODAL ---------- -->
+  <div id="modal-layer" class="hidden">
+    <div id="modal">
+      <div id="modal-titlebar">
+        <span id="modal-title">REPLAK.AI SYSTEM</span>
+        <button id="modal-close" type="button">[x]</button>
+      </div>
+      <div id="modal-body"></div>
+      <p id="modal-hint">press <b>x</b> to dismiss</p>
+    </div>
+  </div>
+
+  <!-- ---------- PERSONNEL FILE DRAWER ---------- -->
+  <div id="file-layer" class="hidden">
+    <div id="file-window">
+      <div id="file-titlebar">
+        <span>C:\PERSONNEL\APPENDIX</span>
+        <button id="file-close" type="button">[x]</button>
+      </div>
+      <div id="file-body"></div>
+    </div>
+  </div>
+
+  <!-- CRT overlays -->
+  <div id="scanlines" aria-hidden="true"></div>
+  <div id="vignette" aria-hidden="true"></div>
+  <div id="flicker" aria-hidden="true"></div>
+
+</div>
+
+<!-- Load order matters: classic scripts, one ESC namespace, no build step. -->
+<script src="content/world.js"></script>
+<script src="content/responses.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/responder.js"></script>
+<script src="js/engine.js"></script>
+<script src="content/script.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
