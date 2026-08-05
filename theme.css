@@ -1,0 +1,715 @@
+/* ============================================================================
+   (ESC)APE — THE VISUAL SYSTEM
+   ----------------------------------------------------------------------------
+   This file owns EVERYTHING about how the game looks: colour, type, chrome,
+   layout, CRT treatment, animation. Nothing in js/ sets an inline style; the
+   scripts only add and remove class names.
+
+   To re-skin the whole game, edit the custom properties in :root below.
+   ========================================================================== */
+
+:root {
+  /* ---- palette --------------------------------------------------------- */
+  --bg:              #000000;
+  --bg-panel:        #030b04;
+  --phosphor:        #33ff66;
+  --phosphor-dim:    #1f9940;
+  --phosphor-faint:  #10521f;
+  --phosphor-bright: #b6ffcc;
+  --amber-warn:      #ffb000;
+  --red-error:       #ff4d4d;
+
+  /* ---- CRT treatment --------------------------------------------------- */
+  --scanline-opacity: 0.20;
+  --scanline-size:    3px;
+  --flicker-rate:     7s;
+  --glow-radius:      6px;
+  --vignette-strength: 0.85;
+
+  /* ---- type ------------------------------------------------------------ */
+  --font-mono: "SF Mono", "Menlo", "DejaVu Sans Mono", "Courier New", monospace;
+  --fs-base:   15px;
+  --fs-small:  12px;
+  --fs-title:  13px;
+  --lh:        1.55;
+  --tracking:  0.04em;
+
+  /* ---- metrics --------------------------------------------------------- */
+  --panel-w:   304px;
+  --gutter:    18px;
+  --border-w:  1px;
+
+  /* ---- motion ---------------------------------------------------------- */
+  --gauge-ease: cubic-bezier(.2,.7,.3,1);
+  --gauge-dur:  900ms;
+}
+
+/* ============================================================================
+   RESET / SHELL
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-mono);
+  font-size: var(--fs-base);
+  line-height: var(--lh);
+  letter-spacing: var(--tracking);
+  color: var(--phosphor);
+  text-shadow: 0 0 var(--glow-radius) rgba(51, 255, 102, .55);
+  -webkit-font-smoothing: antialiased;
+}
+
+#crt {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.hidden { display: none !important; }
+
+pre {
+  margin: 0;
+  font: inherit;
+  letter-spacing: 0;
+  white-space: pre;
+}
+
+button {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-shadow: inherit;
+  padding: 0;
+}
+button:hover { color: var(--phosphor-bright); }
+
+/* ============================================================================
+   CRT OVERLAYS
+   ========================================================================== */
+
+#scanlines, #vignette, #flicker {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 900;
+}
+
+#scanlines {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 0,
+    rgba(0,0,0,0) calc(var(--scanline-size) - 1px),
+    rgba(0,0,0,var(--scanline-opacity)) calc(var(--scanline-size) - 1px),
+    rgba(0,0,0,var(--scanline-opacity)) var(--scanline-size)
+  );
+}
+
+#vignette {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0,0,0,0) 42%,
+    rgba(0,0,0,var(--vignette-strength)) 100%
+  );
+}
+
+#flicker {
+  background: rgba(51, 255, 102, .022);
+  animation: flicker var(--flicker-rate) steps(1) infinite;
+}
+
+@keyframes flicker {
+  0%, 96%, 100% { opacity: 0; }
+  97%           { opacity: 1; }
+  98%           { opacity: .3; }
+  99%           { opacity: .8; }
+}
+
+/* ============================================================================
+   FULLSCREEN SCENES (title / login / boot)
+   ========================================================================== */
+
+.fullscreen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 5vh 6vw;
+  z-index: 10;
+}
+
+#title-art {
+  color: var(--phosphor-bright);
+  font-size: clamp(6px, 1.15vw, 13px);
+  line-height: 1.1;
+  text-shadow: 0 0 14px rgba(51,255,102,.85);
+}
+
+#title-by { text-align: center; }
+#title-by p { margin: .18em 0; color: var(--phosphor-dim); }
+.title-authors { color: var(--phosphor) !important; letter-spacing: .18em; }
+.title-date { font-size: var(--fs-small); }
+
+#title-prompt {
+  margin: 0;
+  color: var(--phosphor-dim);
+  font-size: var(--fs-small);
+  letter-spacing: .24em;
+}
+
+.blink { animation: blink 1.05s steps(1) infinite; }
+@keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+/* ---- login ---------------------------------------------------------- */
+
+#login { justify-content: center; gap: 34px; }
+
+#login-brand {
+  color: var(--phosphor-bright);
+  font-size: clamp(5px, .95vw, 11px);
+  line-height: 1.1;
+}
+
+#login-body {
+  width: min(680px, 92vw);
+  min-height: 220px;
+  border: var(--border-w) solid var(--phosphor-faint);
+  padding: 20px 22px;
+  background: var(--bg-panel);
+}
+
+#login-body .sys-label {
+  color: var(--phosphor-dim);
+  letter-spacing: .16em;
+  margin: 0 0 .7em;
+}
+
+#login-body p { margin: .35em 0; }
+
+.field-line { display: flex; gap: .5ch; align-items: baseline; }
+.field-value { color: var(--phosphor-bright); }
+
+/* viewfinder */
+#viewfinder {
+  margin-top: 14px;
+  border: var(--border-w) solid var(--phosphor-faint);
+  padding: 10px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+#viewfinder pre { color: var(--phosphor-dim); font-size: 10px; line-height: 1; }
+#viewfinder.capturing pre { color: var(--phosphor-bright); }
+#viewfinder .vf-status { color: var(--amber-warn); font-size: var(--fs-small); }
+
+.snap-flash { animation: snap 380ms ease-out; }
+@keyframes snap {
+  0%   { background: rgba(182,255,204,.92); }
+  100% { background: transparent; }
+}
+
+/* ---- boot ------------------------------------------------------------ */
+
+#boot { align-items: flex-start; justify-content: flex-start; padding: 4vh 4vw; }
+#boot-field {
+  font-size: clamp(9px, 1.05vw, 14px);
+  line-height: 1.25;
+  color: var(--phosphor-dim);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+#boot-field b { color: var(--phosphor-bright); font-weight: normal; }
+
+/* ============================================================================
+   MAIN GAMEPLAY LAYOUT
+   Brief: ID panel top-left; gauges above the terminal; terminal from the
+   middle to the right edge, taking up almost the rest of the page.
+   ========================================================================== */
+
+#game {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: var(--panel-w) 1fr;
+  gap: var(--gutter);
+  padding: var(--gutter);
+  z-index: 10;
+}
+
+/* ---- ID panel -------------------------------------------------------- */
+
+#id-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#id-photo-frame {
+  border: var(--border-w) solid var(--phosphor-dim);
+  padding: 6px;
+  background: var(--bg-panel);
+  align-self: flex-start;
+}
+
+#id-photo {
+  font-size: 9px;
+  line-height: .82;
+  color: var(--phosphor);
+  letter-spacing: 0;
+}
+
+#id-name {
+  margin: 0;
+  color: var(--phosphor-bright);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+#id-role {
+  margin: -8px 0 0;
+  font-size: var(--fs-small);
+  color: var(--phosphor-dim);
+  letter-spacing: .14em;
+}
+
+.panel-heading {
+  margin: 0 0 .2em;
+  font-size: var(--fs-small);
+  color: var(--phosphor-dim);
+  letter-spacing: .2em;
+}
+.panel-heading::after {
+  content: "";
+  display: block;
+  border-top: var(--border-w) solid var(--phosphor-faint);
+  margin-top: .2em;
+}
+
+#id-stat-list {
+  font-size: var(--fs-small);
+  line-height: 1.7;
+  color: var(--phosphor);
+}
+#id-stat-list .stat-key { color: var(--phosphor-dim); }
+
+#id-bio { min-height: 0; overflow: hidden; }
+#id-bio-text {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: 1.6;
+  color: var(--phosphor-dim);
+}
+
+#info-button {
+  margin-top: auto;
+  align-self: flex-start;
+  font-size: var(--fs-small);
+  letter-spacing: .12em;
+  color: var(--phosphor-dim);
+  border: var(--border-w) solid var(--phosphor-faint);
+  padding: 5px 9px;
+}
+#info-button:hover {
+  color: var(--phosphor-bright);
+  border-color: var(--phosphor-dim);
+}
+
+/* ---- stage (gauges + terminal + input) -------------------------------- */
+
+#stage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* ---- gauges ---------------------------------------------------------- */
+
+#gauges {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gutter);
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+#gauges.visible { opacity: 1; }
+
+.gauge {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  border: var(--border-w) solid var(--phosphor-faint);
+  padding: 7px 11px;
+  background: var(--bg-panel);
+}
+
+.gauge-label {
+  font-size: var(--fs-small);
+  letter-spacing: .18em;
+  color: var(--phosphor-dim);
+}
+
+.gauge-track {
+  height: 13px;
+  border: var(--border-w) solid var(--phosphor-faint);
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: repeating-linear-gradient(
+    to right,
+    var(--phosphor) 0 7px,
+    transparent 7px 9px
+  );
+  transition: width var(--gauge-dur) var(--gauge-ease),
+              background-color 400ms linear;
+}
+
+.gauge-value {
+  font-size: var(--fs-small);
+  color: var(--phosphor-bright);
+  min-width: 7ch;
+  text-align: right;
+}
+
+/* gauge severity — set by ui.js via class, never inline */
+.gauge.warn  .gauge-fill { background-image: repeating-linear-gradient(to right, var(--amber-warn) 0 7px, transparent 7px 9px); }
+.gauge.warn  .gauge-value { color: var(--amber-warn); }
+.gauge.crit  .gauge-fill { background-image: repeating-linear-gradient(to right, var(--red-error) 0 7px, transparent 7px 9px); }
+.gauge.crit  .gauge-value { color: var(--red-error); }
+.gauge.crit  { animation: gauge-pulse 1.1s ease-in-out infinite; }
+
+@keyframes gauge-pulse {
+  0%, 100% { border-color: var(--phosphor-faint); }
+  50%      { border-color: var(--red-error); }
+}
+
+/* the "bar changed" tick the brief asks to be visible */
+.gauge.bumping .gauge-track { animation: gauge-bump 420ms ease-out; }
+@keyframes gauge-bump {
+  0%   { transform: translateX(0); }
+  25%  { transform: translateX(-2px); }
+  60%  { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+
+/* ---- terminal -------------------------------------------------------- */
+
+#terminal {
+  flex: 1;
+  min-height: 0;
+  border: var(--border-w) solid var(--phosphor-dim);
+  background: var(--bg-panel);
+  padding: 16px 20px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--phosphor-faint) transparent;
+}
+#terminal::-webkit-scrollbar { width: 8px; }
+#terminal::-webkit-scrollbar-thumb { background: var(--phosphor-faint); }
+
+#terminal-scroll > * { margin: 0 0 .55em; }
+
+/* line kinds */
+.line-narrate { color: var(--phosphor); white-space: pre-wrap; }
+
+.line-say { color: var(--phosphor); white-space: pre-wrap; }
+.line-say .speaker { color: var(--phosphor-bright); }
+
+.line-visual {
+  color: var(--phosphor-dim);
+  font-size: var(--fs-small);
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+.line-system {
+  color: var(--amber-warn);
+  white-space: pre-wrap;
+  text-shadow: 0 0 var(--glow-radius) rgba(255,176,0,.5);
+}
+.line-system .speaker { letter-spacing: .12em; }
+
+.line-player { color: var(--phosphor-bright); white-space: pre-wrap; }
+.line-player .speaker { color: var(--phosphor-dim); }
+
+.line-marker {
+  color: var(--phosphor-faint);
+  font-size: var(--fs-small);
+  letter-spacing: .28em;
+  text-align: center;
+  border-top: var(--border-w) solid var(--phosphor-faint);
+  border-bottom: var(--border-w) solid var(--phosphor-faint);
+  padding: .3em 0;
+}
+
+.line-clock {
+  color: var(--amber-warn);
+  font-size: var(--fs-small);
+  letter-spacing: .16em;
+}
+
+.line-art { color: var(--phosphor); font-size: 11px; line-height: 1.05; }
+
+.line-report { white-space: pre-wrap; color: var(--phosphor); }
+.line-report .rk { color: var(--phosphor-dim); }
+.line-report .rv { color: var(--phosphor-bright); }
+
+.choice-list { list-style: none; padding: 0 0 0 1ch; margin: 0 0 .55em; }
+.choice-list li { color: var(--phosphor-dim); margin: .1em 0; }
+.choice-list li .choice-key { color: var(--phosphor-bright); }
+.choice-list li.selected { color: var(--phosphor-bright); }
+
+.cursor { animation: blink 1.05s steps(1) infinite; }
+
+/* ---- input bar ------------------------------------------------------- */
+
+#input-bar {
+  display: flex;
+  gap: 1ch;
+  align-items: baseline;
+  border: var(--border-w) solid var(--phosphor-dim);
+  padding: 11px 14px;
+  background: var(--bg-panel);
+}
+
+#input-bar.glow {
+  border-color: var(--phosphor);
+  animation: input-glow 1.8s ease-in-out infinite;
+}
+@keyframes input-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(51,255,102,0); }
+  50%      { box-shadow: 0 0 18px rgba(51,255,102,.35); }
+}
+
+#input-prompt { color: var(--phosphor-dim); }
+
+#input-field {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#input-ghost { color: var(--phosphor-faint); }
+#input-typed { color: var(--phosphor-bright); }
+#input-typed .ok { color: var(--phosphor-bright); }
+#input-caret { color: var(--phosphor-bright); }
+
+/* mistyped character in the type-exact tutorial */
+.badchar {
+  color: var(--red-error);
+  animation: badchar 260ms ease-out forwards;
+}
+@keyframes badchar {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(4px); }
+}
+
+#input-hint {
+  margin: 0;
+  min-height: 1.2em;
+  font-size: var(--fs-small);
+  color: var(--phosphor-faint);
+  letter-spacing: .1em;
+}
+
+/* ============================================================================
+   REPLAK.AI MODAL
+   ========================================================================== */
+
+#modal-layer, #file-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.72);
+}
+
+#modal {
+  width: min(560px, 88vw);
+  border: var(--border-w) solid var(--amber-warn);
+  background: var(--bg-panel);
+  box-shadow: 0 0 34px rgba(255,176,0,.28);
+  animation: modal-in 180ms ease-out;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+#modal-titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: var(--border-w) solid var(--amber-warn);
+  padding: 7px 11px;
+  color: var(--amber-warn);
+  font-size: var(--fs-small);
+  letter-spacing: .2em;
+}
+#modal-close { color: var(--amber-warn); }
+
+#modal-body {
+  padding: 20px 22px;
+  color: var(--amber-warn);
+  white-space: pre-wrap;
+  text-shadow: 0 0 var(--glow-radius) rgba(255,176,0,.5);
+}
+
+#modal-hint {
+  margin: 0;
+  padding: 0 22px 14px;
+  font-size: var(--fs-small);
+  color: var(--phosphor-faint);
+  letter-spacing: .12em;
+}
+#modal-hint b { color: var(--amber-warn); font-weight: normal; }
+
+/* ============================================================================
+   PERSONNEL FILE (appendix world-building)
+   ========================================================================== */
+
+#file-window {
+  width: min(860px, 92vw);
+  height: min(78vh, 720px);
+  display: flex;
+  flex-direction: column;
+  border: var(--border-w) solid var(--phosphor-dim);
+  background: var(--bg-panel);
+}
+
+#file-titlebar {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: var(--border-w) solid var(--phosphor-dim);
+  padding: 7px 11px;
+  font-size: var(--fs-small);
+  letter-spacing: .16em;
+  color: var(--phosphor-dim);
+}
+
+#file-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--phosphor-faint) transparent;
+}
+#file-body::-webkit-scrollbar { width: 8px; }
+#file-body::-webkit-scrollbar-thumb { background: var(--phosphor-faint); }
+
+#file-body h3 {
+  margin: 1.4em 0 .3em;
+  font-size: var(--fs-base);
+  font-weight: normal;
+  color: var(--phosphor-bright);
+  letter-spacing: .12em;
+}
+#file-body h3:first-child { margin-top: 0; }
+#file-body p {
+  margin: 0 0 .6em;
+  font-size: var(--fs-small);
+  line-height: 1.7;
+  color: var(--phosphor-dim);
+}
+
+/* ============================================================================
+   WARP — the surreal glitch when the player's input is absurd
+   ========================================================================== */
+
+#crt.warp-1 { animation: warp1 620ms ease-in-out; }
+#crt.warp-2 { animation: warp2 900ms ease-in-out; }
+#crt.warp-3 { animation: warp3 1400ms ease-in-out; }
+
+@keyframes warp1 {
+  0%, 100% { filter: none; }
+  40%      { filter: hue-rotate(24deg) saturate(1.5); }
+}
+
+@keyframes warp2 {
+  0%, 100% { filter: none; transform: none; }
+  20%      { filter: invert(1) hue-rotate(90deg); }
+  30%      { transform: translateX(-6px) skewX(2deg); }
+  45%      { filter: none; transform: translateX(5px) skewX(-1.5deg); }
+  70%      { filter: hue-rotate(180deg) saturate(2); transform: none; }
+}
+
+@keyframes warp3 {
+  0%, 100% { filter: none; transform: none; }
+  10%      { filter: invert(1); transform: scaleY(1.04) translateY(-8px); }
+  22%      { filter: hue-rotate(300deg) saturate(3); transform: translateX(11px) skewX(4deg); }
+  34%      { filter: none; transform: scaleX(1.03) translateX(-9px); }
+  50%      { filter: invert(1) blur(1.4px); transform: skewY(1.2deg); }
+  66%      { filter: hue-rotate(140deg); transform: translateY(6px); }
+  82%      { filter: contrast(2.2); transform: none; }
+}
+
+.glitch-text { animation: glitch-text 520ms steps(2) infinite; }
+@keyframes glitch-text {
+  0%, 100% { transform: none; opacity: 1; }
+  50%      { transform: translateX(1px); opacity: .82; }
+}
+
+/* ============================================================================
+   ENDINGS
+   ========================================================================== */
+
+#crt.ending-fail  { --phosphor: #ff4d4d; --phosphor-dim: #a02323; --phosphor-bright: #ffb3b3; }
+#crt.ending-good  { --phosphor: #b6ffcc; --phosphor-bright: #ffffff; }
+#crt.epilogue     { --phosphor: #7fd6ff; --phosphor-dim: #3d7fa3; --phosphor-bright: #d6f2ff;
+                    --phosphor-faint: #14384a; }
+
+#crt.static-burst::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 950;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,.10) 0 2px,
+    rgba(0,0,0,.28) 2px 4px
+  );
+  animation: static-burst 1.1s steps(6) 1;
+}
+@keyframes static-burst {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-40px); }
+}
+
+/* ============================================================================
+   NARROW SCREENS — stack the panel above the stage
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  #game { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  #id-panel { flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 14px; }
+  #id-bio { display: none; }
+  #info-button { margin-top: 0; }
+  #gauges { grid-template-columns: 1fr; gap: 8px; }
+}
