@@ -371,10 +371,29 @@ ESC.engine = (function () {
       });
     },
 
-    /* Stage directions — visual changes, printed but not "spoken". */
+    /*
+       Set design. The brief's rule: un-indented text is "a visual change that
+       needs to be coded out" — the player should SEE and HEAR it, never read
+       it. So stage directions name an effect in js/fx.js instead of printing.
+    */
+    fx: function (b) {
+      var p = ESC.fx.play(b.name, b.arg);
+      /* await:false lets an effect run underneath the narration that
+         describes it — the boxes appear WHILE you count them. */
+      if (b.await === false) return b.wait ? U().sleep(b.wait) : null;
+      return p.then(function () {
+        return b.wait ? U().sleep(b.wait) : null;
+      });
+    },
+
+    /*
+       Deliberately prints nothing. Kept only as an authoring guardrail: if a
+       stage direction is ever left as a `visual` beat, it warns in the console
+       rather than leaking prose into the terminal.
+    */
     visual: function (b) {
-      U().printLine(b.text, 'visual');
-      return U().sleep(b.wait === undefined ? 420 : b.wait);
+      console.warn('[engine] stage direction not converted to an fx beat:', b.text);
+      return null;
     },
 
     marker: function (b) {

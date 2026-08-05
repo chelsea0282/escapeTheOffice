@@ -262,6 +262,16 @@ ESC.ui = (function () {
     return ui.printLine(text, 'marker');
   };
 
+  /* A silent scene break. Replaces the "SCENARIO n BEGINS" production labels:
+     the player feels the transition instead of reading its name. */
+  ui.rule = function () {
+    var hr = document.createElement('div');
+    hr.className = 'line-rule';
+    el['terminal-scroll'].appendChild(hr);
+    scrollDown();
+    return hr;
+  };
+
   ui.clearTerminal = function () {
     el['terminal-scroll'].innerHTML = '';
   };

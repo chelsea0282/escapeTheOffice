@@ -43,6 +43,7 @@ theme.css             THE VISUAL SYSTEM: colour, type, chrome, CRT, animation
 js/
   state.js            clock, HP, the decision ledger, [] token substitution
   ui.js               the only file that touches the DOM
+  fx.js               THE SET DESIGN: synthesised sound + screen effects
   engine.js           reusable mechanics: typewriter, choice, type-exact, open input
   responder.js        the scripted stand-in for the LLM
   main.js             boot, scene order, failure routing, debug helpers
@@ -81,7 +82,7 @@ from CSS.)
 { type: 'openInput', scene: 's1' },
 ```
 
-Available beat types: `narrate` `say` `system` `visual` `marker` `art` `popup`
+Available beat types: `narrate` `say` `system` `fx` `marker` `art` `popup`
 `wait` `gauges` `cost` `clockTo` `typeExact` `choose` `openInput` `call` `branch`.
 
 Conventions carried over from the brief:
@@ -89,9 +90,55 @@ Conventions carried over from the brief:
 - **NARRATOR lines print with no name label** — the terminal *is* the narrator.
   Every other character prints `Jerry: ` first.
 - Indented script text became `narrate` / `say` / `system` (typed into the terminal).
-- Un-indented stage directions became `visual` (printed, but as description).
+- Un-indented stage directions became **`fx` beats** — set design. See below.
 - Text is typed **one letter at a time at reading speed**, with longer beats on
   sentence endings. Press space, enter or click to skip a line.
+
+---
+
+## Set design (`js/fx.js`)
+
+The brief's rule for un-indented text is that it's "a visual change that **needs
+to be coded out**." So stage directions are never printed as prose — the player
+sees and hears them happen. `(Sound: Slack ping)` is an actual ping and an actual
+notification sliding in; "the open text box glows" is the box actually glowing.
+
+Script side, a stage direction is just a name:
+
+```js
+{ type: 'fx', name: 'slackPing' },
+{ type: 'fx', name: 'countBoxes', await: false, wait: 500 },
+```
+
+`await: false` lets an effect run *underneath* the narration — the boxes appear
+while you're counting them, rather than before.
+
+**All sound is synthesised** with the Web Audio API. There are no audio files;
+every noise is a few oscillators and a noise buffer. Browsers block audio until a
+user gesture, so it unlocks on the title-card keypress. There's a `[♪]` mute
+toggle bottom-left, and the game degrades silently if Web Audio is unavailable.
+
+The registry:
+
+| effect | what happens |
+|---|---|
+| `typingStart` / `typingIntensify` / `typingStop` | the office typing around you, thickening on cue |
+| `deepBop` | the dead-pan monotone drone the brief asks for |
+| `bootBops` / `shutter` | login beep-bops; the camera taking your photo |
+| `countBoxes` | boxes actually appear on screen — and one quietly vanishes |
+| `slackPing` | two-tone ping + a JERRY notification sliding in |
+| `warning` | the Replak.AI alarm buzz and screen wash |
+| `gaugesArrive` | the HP and time bars arriving |
+| `sceneBreak` | a silent rule and a beat, replacing "SCENARIO n BEGINS" |
+| `portal` / `staticFlip` / `evaluatorPing` | the porcupine's doorway; the epilogue hand-off |
+| `clockOut` / `flatline` / `daylight` | the three endings |
+
+**To add a cue:** write a function in `EFFECTS` in `js/fx.js`, then name it from
+the script. Nothing else changes.
+
+If a stage direction is ever left as an old `visual` beat, the engine prints
+**nothing** and warns in the console instead — so prose can't leak back into the
+terminal by accident.
 
 ### `[]` tokens
 
@@ -212,5 +259,3 @@ without playing a turn.
 - The camera is **simulated** — a fake permission dialog and viewfinder, then a
   procedural ASCII portrait seeded from the name you type. Deterministic: the
   same name always makes the same face. No real webcam is requested.
-- No audio. Sound cues from the script are printed as stage directions
-  (`(Sound: Slack ping)`), so the beats are there if you want to wire audio in.

@@ -5,12 +5,13 @@
    of beats that js/engine.js knows how to perform.
 
    Beat types available (see engine.handlers):
-     narrate | say | system | visual | marker | art | popup | wait | gauges
+     narrate | say | system | fx | marker | art | popup | wait | gauges
      cost | clockTo | typeExact | choose | openInput | call | branch
 
    Conventions from the brief, preserved here:
      * Indented script text  -> narrate / say / system  (typed into the terminal)
-     * Un-indented direction -> visual                  (a change being described)
+     * Un-indented direction -> fx    (SET DESIGN: the player sees and hears it
+       happen; it is never printed as prose. Effects live in js/fx.js.)
      * NARRATOR lines carry no speaker; the terminal IS the narrator.
      * [] tokens are resolved by state.interpolate() at print time.
    ========================================================================== */
@@ -93,6 +94,7 @@ ESC.script = (function () {
           })
           .then(function () {
             vf.classList.add('snap-flash');
+            ESC.fx.play('shutter');
             status.textContent = 'CAPTURED';
             var seed = ESC.state.ledger.name + '|' + ESC.state.ledger.cameraConsent;
             ui.setPortrait(ui.makePortrait(seed));
@@ -116,6 +118,7 @@ ESC.script = (function () {
 
       /* ---- boot into the main layout ----------------------------------- */
       .then(function () {
+        ESC.fx.play('bootBops');
         return ui.bootSequence('REPLAK.AI  ///  SESSION RESTORED', 3600);
       })
       .then(function () {
@@ -131,7 +134,7 @@ ESC.script = (function () {
      ==================================================================== */
 
   S.opening = [
-    { type: 'visual', text: '(typing sound continues)' },
+    { type: 'fx', name: 'typingStart' },
 
     { type: 'narrate', text:
       'It\'s Thursday, 3:50pm. You\'re typing away at your desk writing the ' +
@@ -147,7 +150,7 @@ ESC.script = (function () {
       'You sense the quiet tension that is perpetrating the office. Everyone ' +
       'else is silently, but furiously typing around you.' },
 
-    { type: 'visual', text: '(typing sound intensifies)' },
+    { type: 'fx', name: 'typingIntensify' },
 
     { type: 'narrate', text:
       'But you must exit The System at 5:00pm today. You promised Parker, and ' +
@@ -159,8 +162,10 @@ ESC.script = (function () {
       'You\'re furiously copying boxes of excel spreadsheets and pasting ' +
       'circles into the power point, preparing for the meeting.' },
 
-    /* ---- the box counting ---------------------------------------------- */
-    { type: 'visual', text: 'Your screen shots [\'count the number of boxes on the screen\']' },
+    /* ---- the box counting -----------------------------------------------
+       The boxes appear on screen and are countable; the narration below
+       counts along with them, and one of them quietly disappears. */
+    { type: 'fx', name: 'countBoxes', await: false, wait: 500 },
 
     { type: 'narrate', text: 'One… two… three… you count the boxes that appear.' },
     { type: 'narrate', text: 'Twenty seven… Twenty nine…' },
@@ -185,31 +190,20 @@ ESC.script = (function () {
      ==================================================================== */
 
   S.tutorial = [
-    { type: 'marker', text: 'TUTORIAL BEGINS' },
-
-    { type: 'visual', text:
-      'An open textbox appears at the bottom of the screen. The grey text ' +
-      'shows what you are permitted to say.' },
 
     { type: 'typeExact',
       text: 'Go to PHS to get snacks and coffee.',
       hpPerTypo: 1 },
 
-    { type: 'visual', text: 'A pop warning sign appears on screen.' },
+    { type: 'fx', name: 'warning' },
 
     { type: 'popup', title: 'REPLAK.AI SYSTEM — WARNING', text:
       'WARNING: You just got back from a long break.\n\n' +
       'Why are you trying to leave the desk again?' },
 
-    { type: 'visual', text: 'The warning sign goes away.' },
-
     { type: 'narrate', text:
       'Do you have time for this? You need to finish clicking yes and no for ' +
       'the evals that you were doing.' },
-
-    { type: 'visual', text:
-      'The open textbox shows two possible grey text messages that you can ' +
-      'pick between.' },
 
     { type: 'choose', options: [
       {
@@ -247,9 +241,7 @@ ESC.script = (function () {
     { type: 'call', fn: function () { ESC.ui.renderIdPanel(); } },
 
     /* The gauges arrive here, per the brief. */
-    { type: 'visual', text:
-      'On the side, an HP bar and a time countdown bar representing the time ' +
-      'from 3:50pm to 5:00pm appears.' },
+    { type: 'fx', name: 'gaugesArrive' },
     { type: 'gauges' },
 
     { type: 'wait', ms: 500 }
@@ -260,11 +252,9 @@ ESC.script = (function () {
      ==================================================================== */
 
   S.scenario1 = [
-    { type: 'marker', text: 'SCENARIO 1 BEGINS' },
+    { type: 'fx', name: 'sceneBreak' },
 
-    { type: 'visual', text: '(Sound: Slack ping)' },
-
-    { type: 'narrate', text: 'You see Jerry\'s face pop up on your screen.' },
+    { type: 'fx', name: 'slackPing' },
 
     { type: 'say', speaker: 'Jerry', text:
       'Hey [player]. The leads saw the Perceived Forward Momentum Index of ' +
@@ -295,13 +285,8 @@ ESC.script = (function () {
       'You check your phone. There\'s a new notification. Parker is wondering ' +
       'how you\'re doing on time.' },
 
-    { type: 'visual', text:
-      'The open text box glows, indicating that you should start typing in it.' },
-
     { type: 'openInput', scene: 's1',
       hint: 'answer Jerry — or look around, or try to leave. everything costs time.' },
-
-    { type: 'marker', text: 'SCENARIO 1 ENDS' }
   ];
 
   /* ======================================================================
@@ -344,7 +329,7 @@ ESC.script = (function () {
      ==================================================================== */
 
   S.scenario2 = [
-    { type: 'marker', text: 'SCENARIO 2 BEGINS' },
+    { type: 'fx', name: 'sceneBreak' },
 
     { type: 'say', speaker: 'Rachel', text:
       'It seems the next steps are not clear. The item that we said we\'ll ' +
@@ -356,13 +341,8 @@ ESC.script = (function () {
       'Hey [player], sorry that this is so urgent, can you take a stab by EOD ' +
       'today and set up a follow up Standing meeting around 5pm?' },
 
-    { type: 'visual', text:
-      'The open text box glows, indicating that you should start typing in it.' },
-
     { type: 'openInput', scene: 's2',
       hint: 'answer Rachel — you can also ask her about the email.' },
-
-    { type: 'marker', text: 'SCENARIO 2 ENDS' }
   ];
 
   /* ======================================================================
@@ -370,7 +350,7 @@ ESC.script = (function () {
      ==================================================================== */
 
   S.scenario3 = [
-    { type: 'marker', text: 'SCENARIO 3 BEGINS' },
+    { type: 'fx', name: 'sceneBreak' },
 
     { type: 'narrate', text:
       'You make a beeline for the elevator. After what feels like a lifetime, ' +
@@ -398,13 +378,8 @@ ESC.script = (function () {
       'you have more work to do on my project? I won\'t become a full-grown ' +
       'porcupine if you don\'t complete all of my KPIs in time.' },
 
-    { type: 'visual', text:
-      'The open text box glows, indicating that you should start typing in it.' },
-
     { type: 'openInput', scene: 's3',
       hint: 'it wants to know about its KPIs. it has nowhere else to be.' },
-
-    { type: 'marker', text: 'SCENARIO 3 ENDS' }
   ];
 
   /* ======================================================================
@@ -421,10 +396,7 @@ ESC.script = (function () {
           { type: 'say', speaker: 'Porcupine', text:
             'Well then. Well then! Go. Go, you\'ve earned it. Let me get that ' +
             'for you.' },
-          { type: 'visual', text:
-            'The porcupine gestures at the lobby doors. The lobby doors are ' +
-            'no longer lobby doors.' },
-          { type: 'call', fn: function () { return ESC.ui.warp(3); } },
+          { type: 'fx', name: 'portal' },
           { type: 'narrate', text:
             'You step through and you are at the venue. The support act is ' +
             'still on. The floor smells like beer and someone\'s coat.' },
@@ -449,6 +421,7 @@ ESC.script = (function () {
                      'Parker is going to be livid.';
 
       return [
+        { type: 'fx', name: 'daylight' },
         { type: 'narrate', text:
           'You\'re out. The time is [insert time]. You step out into the sun ' +
           'and run to the train station.' },
@@ -462,7 +435,6 @@ ESC.script = (function () {
       ];
     }},
 
-    { type: 'marker', text: 'GAMEPLAY ENDS' },
     { type: 'wait', ms: 900 }
   ];
 
@@ -472,6 +444,7 @@ ESC.script = (function () {
 
   S.failTime = [
     { type: 'call', always: true, fn: function () { ESC.ui.setMood('ending-fail'); } },
+    { type: 'fx', name: 'clockOut', always: true },
     { type: 'marker', text: '5:00 PM', always: true },
     { type: 'narrate', always: true, text:
       'The System closes. Not dramatically — it just stops accepting input, ' +
@@ -486,6 +459,7 @@ ESC.script = (function () {
 
   S.failHp = [
     { type: 'call', always: true, fn: function () { ESC.ui.setMood('ending-fail'); } },
+    { type: 'fx', name: 'flatline', always: true },
     { type: 'marker', text: 'ATTENTION LEVEL: ZERO', always: true },
     { type: 'narrate', always: true, text:
       'Your concentration does not drop so much as arrive at the bottom.' },
@@ -570,23 +544,14 @@ ESC.script = (function () {
   };
 
   S.epilogue = [
-    { type: 'call', always: true, fn: function () {
-        return ESC.ui.staticBurst();
-      }},
+    { type: 'fx', name: 'staticFlip', always: true },
     { type: 'call', always: true, fn: function () {
         ESC.ui.setMood('epilogue');
         ESC.ui.clearTerminal();
       }},
 
-    { type: 'marker', text: 'EPILOG', always: true },
 
-    { type: 'visual', always: true, text:
-      'Slight static. The scene flips to show a different person logging into ' +
-      'the Replak.AI terminal.' },
-
-    { type: 'visual', always: true, text:
-      'There is a ping exchange between two evaluators in the system — Rachel ' +
-      'and "the system".' },
+    { type: 'fx', name: 'evaluatorPing', always: true },
 
     { type: 'wait', ms: 600, always: true },
 

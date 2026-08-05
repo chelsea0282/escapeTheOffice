@@ -455,6 +455,13 @@ button:hover { color: var(--phosphor-bright); }
 .line-player { color: var(--phosphor-bright); white-space: pre-wrap; }
 .line-player .speaker { color: var(--phosphor-dim); }
 
+/* Silent scene break — what the player gets instead of "SCENARIO 1 BEGINS". */
+.line-rule {
+  border-top: var(--border-w) solid var(--phosphor-faint);
+  margin: 1.1em 0 !important;
+  opacity: .7;
+}
+
 .line-marker {
   color: var(--phosphor-faint);
   font-size: var(--fs-small);
@@ -637,6 +644,107 @@ button:hover { color: var(--phosphor-bright); }
   line-height: 1.7;
   color: var(--phosphor-dim);
 }
+
+/* ============================================================================
+   SET DESIGN — the effects that replace printed stage directions
+   Driven by js/fx.js. See #fx-layer in index.html.
+   ========================================================================== */
+
+#fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 700;
+}
+
+/* ---- Slack-style notification ("You see Jerry's face pop up") ---------- */
+
+.fx-toast {
+  position: absolute;
+  top: 22px;
+  right: 26px;
+  min-width: 236px;
+  border: var(--border-w) solid var(--phosphor);
+  background: var(--bg-panel);
+  padding: 10px 14px;
+  box-shadow: 0 0 22px rgba(51, 255, 102, .30);
+  opacity: 0;
+  transform: translateX(26px);
+  transition: opacity 280ms ease, transform 280ms cubic-bezier(.2,.8,.3,1);
+}
+.fx-toast.in { opacity: 1; transform: translateX(0); }
+
+.fx-toast-title {
+  font-size: var(--fs-small);
+  letter-spacing: .2em;
+  color: var(--phosphor-bright);
+}
+.fx-toast-body {
+  font-size: var(--fs-small);
+  color: var(--phosphor-dim);
+  margin-top: .25em;
+}
+
+/* ---- the boxes you are asked to count --------------------------------- */
+
+.fx-boxfield {
+  position: absolute;
+  inset: 0;
+  transition: opacity 400ms ease;
+}
+.fx-boxfield.out { opacity: 0; }
+
+.fx-box {
+  position: absolute;
+  width: 26px;
+  height: 18px;
+  border: var(--border-w) solid var(--phosphor);
+  background: rgba(51, 255, 102, .07);
+  animation: fx-box-in 180ms ease-out;
+}
+.fx-box.gone { animation: fx-box-out 260ms ease-in forwards; }
+
+@keyframes fx-box-in {
+  from { opacity: 0; transform: scale(.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes fx-box-out {
+  to { opacity: 0; transform: scale(1.6); }
+}
+
+/* ---- the room typing at you ------------------------------------------- */
+
+#crt.fx-pressure #terminal { animation: fx-pressure 2.6s ease-in-out; }
+@keyframes fx-pressure {
+  0%, 100% { border-color: var(--phosphor-dim); }
+  50%      { border-color: var(--phosphor-bright); }
+}
+
+/* ---- the warning sign arriving ---------------------------------------- */
+
+#crt.fx-alarm { animation: fx-alarm .9s steps(2) 2; }
+@keyframes fx-alarm {
+  0%, 100% { filter: none; }
+  50%      { filter: sepia(1) saturate(4) hue-rotate(-18deg); }
+}
+
+/* ---- mute toggle ------------------------------------------------------- */
+
+#fx-mute {
+  position: absolute;
+  left: 18px;
+  bottom: 14px;
+  pointer-events: auto;
+  font-size: var(--fs-small);
+  letter-spacing: .1em;
+  color: var(--phosphor-dim);
+  border: var(--border-w) solid var(--phosphor-faint);
+  padding: 3px 8px;
+  background: var(--bg-panel);
+  z-index: 720;
+}
+#fx-mute:hover { color: var(--phosphor-bright); border-color: var(--phosphor-dim); }
+#fx-mute.off   { color: var(--phosphor-faint); }
 
 /* ============================================================================
    WARP — the surreal glitch when the player's input is absurd
