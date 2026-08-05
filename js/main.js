@@ -19,6 +19,11 @@ ESC.main = (function () {
         if (e.type === 'keydown' && (e.metaKey || e.ctrlKey || e.altKey)) return;
         document.removeEventListener('keydown', go);
         document.removeEventListener('click', go);
+        /* This keypress is the user gesture browsers require before any audio
+           may play, so the whole sound design hangs off it. */
+        ESC.fx.unlock();
+        ESC.fx.mountMuteToggle();
+        ESC.fx.play('deepBop');
         resolve();
       }
       document.addEventListener('keydown', go);
