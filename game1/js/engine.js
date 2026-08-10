@@ -166,24 +166,12 @@ ESC.engine = (function () {
     opts = opts || {};
     var u = U();
 
-    var list = document.createElement('ul');
-    list.className = 'choice-list';
-    options.forEach(function (o, i) {
-      var li = document.createElement('li');
-      var key = document.createElement('span');
-      key.className = 'choice-key';
-      key.textContent = 'Option ' + o.key + ' - ';
-      li.appendChild(key);
-      li.appendChild(document.createTextNode(ESC.state.interpolate(o.label)));
-      list.appendChild(li);
-    });
-    document.getElementById('terminal-scroll').appendChild(list);
-    document.getElementById('terminal').scrollTop =
-      document.getElementById('terminal').scrollHeight;
+    /* Options render in the panel BELOW the terminal, not in the narration. */
+    u.showChoices(opts.question, options);
 
     u.showInput('>', true);
     u.setHint('type ' +
-      options.map(function (o) { return o.key; }).join(' or ') +
+      options.map(function (o) { return o.key; }).join(' / ') +
       ', or type the option out in full, then ENTER');
 
     var typed = '';
@@ -191,15 +179,13 @@ ESC.engine = (function () {
     function match(input) {
       var t = input.toLowerCase().trim();
       if (!t) return null;
-      /* exact key */
       for (var i = 0; i < options.length; i++) {
         if (t === options[i].key.toLowerCase() ||
             t === String(i + 1) ||
             t === 'option ' + options[i].key.toLowerCase()) return options[i];
       }
-      /* typed the option text */
       for (var j = 0; j < options.length; j++) {
-        var label = options[j].label.toLowerCase();
+        var label = ESC.state.interpolate(options[j].label).toLowerCase();
         if (t.length >= 6 && (label.indexOf(t) === 0 || t.indexOf(label.slice(0, 20)) === 0)) {
           return options[j];
         }
@@ -213,15 +199,21 @@ ESC.engine = (function () {
           e.preventDefault();
           var picked = match(typed);
           if (!picked) {
-            u.setHint('pick one of the options as written');
+            u.setHint('pick one of the options below');
             return;
           }
           release();
+          u.hideChoices();
           u.hideInput();
-          /* Mark the selection in the printed list. */
-          Array.prototype.forEach.call(list.children, function (li, i) {
-            if (options[i] === picked) li.classList.add('selected');
-          });
+
+          /*
+             Record what ends up happening. The option list itself never
+             reaches the terminal; the chosen line does, unless the scene
+             already narrates it (echo: false).
+          */
+          if (picked.echo !== false) {
+            u.printLine('> ' + ESC.state.interpolate(picked.echo || picked.label), 'player');
+          }
           resolve(picked);
           return;
         }
@@ -229,12 +221,14 @@ ESC.engine = (function () {
           e.preventDefault();
           typed = typed.slice(0, -1);
           u.setTyped(typed);
+          u.armChoice(options.indexOf(match(typed)));
           return;
         }
         if (e.key.length !== 1) return;
         e.preventDefault();
         typed += e.key;
         u.setTyped(typed);
+        u.armChoice(options.indexOf(match(typed)));
       });
     });
   }
@@ -268,7 +262,7 @@ ESC.engine = (function () {
       return speak(verdict.lines).then(function () {
         /* Unparseable: hand them the approved options instead. */
         if (verdict.fallback && cfg.fallback && cfg.fallback.length) {
-          return choose(cfg.fallback).then(function (picked) {
+          return choose(cfg.fallback, { question: cfg.fallbackQuestion }).then(function (picked) {
             return applyChoice(picked);
           });
         }
@@ -425,13 +419,14 @@ ESC.engine = (function () {
     },
 
     choose: function (b) {
-      return choose(b.options).then(function (picked) {
+      return choose(b.options, { question: b.question }).then(function (picked) {
         return applyChoice(picked);
       });
     },
 
     openInput: function (b) {
-      return openInput({ scene: b.scene, hint: b.hint, fallback: b.fallback });
+      return openInput({ scene: b.scene, hint: b.hint, fallback: b.fallback,
+                         fallbackQuestion: b.fallbackQuestion });
     },
 
     /* Arbitrary escape hatch for one-off moments (login, epilogue report). */

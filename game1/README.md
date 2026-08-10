@@ -113,6 +113,7 @@ The doc calls for several things that are now real components:
 
 | the script says | what happens |
 |---|---|
+| "Question appears at the bottom of the screen (separated from the narration)" | the choice panel below the terminal |
 | "time/location text title updates to…" | `locate` beat repaints the caption bar |
 | "Fresh terminal screen." | `freshScreen` clears the terminal between scenes |
 | "Click to continue in italics" | `continue` beat waits for a key or click |
@@ -120,6 +121,25 @@ The doc calls for several things that are now real components:
 | "shows up formatted as a chat message" | `chat` beat |
 | "a button to click to restart the game" | `restart` beat |
 | "Show progress bar" | the progress bar under the caption |
+
+### Choices live below the narration
+
+Options are a UI affordance, not story, so they render in a **choice panel below
+the terminal** and are wiped on selection. The narration box only records what
+ends up happening:
+
+```js
+{ type: 'choose', question: 'What do you say to Jerry?', options: [
+    { key: 'A', label: 'Jerry, get your head in the game.', … },
+    { key: 'B', label: 'You push Jerry to the front line.', … },
+] },
+```
+
+The picked option is echoed into the terminal as `> …` so the transcript reads
+as a story. Set **`echo: false`** on an option whose `then` beats already narrate
+it, to avoid saying it twice — for instance "Blame Jerry." is followed by *"You
+respond to the email by saying that this is Jerry's fault"*, so it does not need
+echoing. Options you did **not** pick never reach the terminal at all.
 
 ### `[]` tokens
 

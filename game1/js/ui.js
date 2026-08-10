@@ -38,7 +38,8 @@ ESC.ui = (function () {
      'login-body','boot','boot-field','game','id-photo','id-name','id-role',
      'id-stat-list','id-bio-text','info-button','caption-bar','caption-text',
      'progress','terminal',
-     'terminal-scroll','input-bar','input-prompt','input-ghost','input-typed',
+     'terminal-scroll','choice-panel','choice-question','choice-options',
+     'input-bar','input-prompt','input-ghost','input-typed',
      'input-caret','input-hint','modal-layer','modal-title','modal-body',
      'modal-close','modal-hint','file-layer','file-window','file-body','file-close'
     ].forEach(function (id) {
@@ -643,6 +644,43 @@ ESC.ui = (function () {
       caret:  el['input-caret'],
       hint:   el['input-hint']
     };
+  };
+
+  /* ======================================================================
+     CHOICE PANEL
+     "Question appears at the bottom of the screen (separated from the
+      narration)." The options render here, below the terminal, and are wiped
+     on selection — the terminal only records what ends up happening.
+     ==================================================================== */
+
+  ui.showChoices = function (question, options) {
+    el['choice-question'].textContent = question ? ESC.state.interpolate(question) : '';
+    var host = el['choice-options'];
+    host.innerHTML = '';
+    options.forEach(function (o) {
+      var li = document.createElement('li');
+      var k = document.createElement('span');
+      k.className = 'choice-key';
+      k.textContent = o.key + '. ';
+      li.appendChild(k);
+      li.appendChild(document.createTextNode(ESC.state.interpolate(o.label)));
+      host.appendChild(li);
+    });
+    el['choice-panel'].classList.remove('hidden');
+  };
+
+  /* Highlight whichever option the current typing matches. */
+  ui.armChoice = function (index) {
+    var kids = el['choice-options'].children;
+    for (var i = 0; i < kids.length; i++) {
+      kids[i].classList.toggle('armed', i === index);
+    }
+  };
+
+  ui.hideChoices = function () {
+    el['choice-panel'].classList.add('hidden');
+    el['choice-question'].textContent = '';
+    el['choice-options'].innerHTML = '';
   };
 
   ui.showInput = function (promptChar, glow) {
