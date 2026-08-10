@@ -79,6 +79,14 @@
         <div id="terminal-scroll"></div>
       </div>
 
+      <!-- "Question appears at the bottom of the screen (separated from the
+           narration)." The options live here, NOT in the terminal — the
+           terminal only records what ends up happening. -->
+      <div id="choice-panel" class="hidden">
+        <p id="choice-question"></p>
+        <ul id="choice-options"></ul>
+      </div>
+
       <!-- Player input surface -->
       <div id="input-bar" class="hidden">
         <span id="input-prompt">&gt;</span>

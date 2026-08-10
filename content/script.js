@@ -169,14 +169,11 @@ ESC.script = (function () {
     { type: 'narrate', text: 'You decide to take a break to clear your head.' },
     { type: 'narrate', text: 'You think to yourself \'Maybe I need some coffee\'.' },
 
-    /* "Question appears at the bottom of the screen (separated from the
-        narration)" */
-    { type: 'narrate', text: '\nWhere should you get your coffee?' },
-
-    { type: 'choose', options: [
+    { type: 'choose', question: 'Where should you get your coffee?', options: [
       {
         key: 'A',
         label: 'Go to the PHS (Productivity Hydration Station) and make your own coffee',
+        echo: false,
         record: { coffee: 'made' },
         locate: ['4:01PM', 'The Office Kitchen, Second Floor'],
         then: [
@@ -191,6 +188,7 @@ ESC.script = (function () {
       {
         key: 'B',
         label: 'Steal your coworker Jerry\'s drink',
+        echo: false,
         record: { coffee: 'stole' },
         locate: ['4:01PM', 'Jerry\'s Desk, Second Floor'],
         then: [
@@ -239,7 +237,7 @@ ESC.script = (function () {
       'You glance down. All you\'re holding is the mug of coffee you just brewed.' },
     { type: 'narrate', text: 'Rachel looks at you expectantly.' },
 
-    { type: 'choose', options: [
+    { type: 'choose', question: 'Do you carry her coffee?', options: [
       {
         key: 'A',
         label: 'Oh, sure.',
@@ -334,12 +332,11 @@ ESC.script = (function () {
     { type: 'narrate', text:
       'This is definitely referencing a feature that you launched this morning.' },
 
-    { type: 'narrate', text: '\n> What do you do?' },
-
-    { type: 'choose', options: [
+    { type: 'choose', question: 'What do you do?', options: [
       {
         key: 'A',
         label: 'Walk away from the desk and pretend you didn\'t see the message or the email.',
+        echo: false,
         record: { emailChoice: 'ignored' },
         then: [
           { type: 'freshScreen' },
@@ -358,6 +355,7 @@ ESC.script = (function () {
       {
         key: 'B',
         label: 'Blame Jerry.',
+        echo: false,
         record: { emailChoice: 'blamed' },
         then: [
           { type: 'freshScreen' },
@@ -375,6 +373,7 @@ ESC.script = (function () {
       {
         key: 'C',
         label: 'Write your own reply.',
+        echo: false,
         record: { emailChoice: 'open' },
         then: [
           { type: 'narrate', text: '\nYou start typing.' },
@@ -422,10 +421,11 @@ ESC.script = (function () {
     { type: 'narrate', text:
       'This is related to the feature you launched this morning.' },
 
-    { type: 'choose', options: [
+    { type: 'choose', question: 'What do you tell Rachel?', options: [
       {
         key: 'A',
         label: 'This is related to the feature I launched this morning.',
+        echo: false,
         record: { blameChoice: 'owned' },
         suddenDeath: 'ownedIt',
         then: [
@@ -445,6 +445,7 @@ ESC.script = (function () {
       {
         key: 'B',
         label: 'It was Jerry\'s idea.',
+        echo: false,
         record: { blameChoice: 'blamedJerry' },
         then: [
           { type: 'freshScreen' },
@@ -466,6 +467,7 @@ ESC.script = (function () {
       {
         key: 'C',
         label: 'Say something else.',
+        echo: false,
         record: { blameChoice: 'open' },
         then: [
           { type: 'narrate', text: '\nRachel waits.' },
@@ -513,9 +515,7 @@ ESC.script = (function () {
       'Look, we need to show Replak.ai leadership that we\'re on top of this. ' +
       'How do we keep ahead of the competition no matter what?' },
 
-    { type: 'narrate', text: '\nWhat do you suggest to Rachel?' },
-
-    { type: 'choose', options: [
+    { type: 'choose', question: 'What do you suggest to Rachel?', options: [
       {
         key: 'A',
         label: 'Install malware on their computers.',
@@ -544,6 +544,7 @@ ESC.script = (function () {
       {
         key: 'C',
         label: 'Suggest something else.',
+        echo: false,
         record: { sabotage: 'open' },
         then: [
           { type: 'narrate', text: '\nRachel leans forward.' },
@@ -592,9 +593,7 @@ ESC.script = (function () {
       'Hey [player]. Is this… right? It feels like this attack could get us ' +
       'all fired.' },
 
-    { type: 'narrate', text: '\nWhat do you say to Jerry?' },
-
-    { type: 'choose', options: [
+    { type: 'choose', question: 'What do you say to Jerry?', options: [
       {
         key: 'A',
         label: 'Jerry, get your head in the game.',
@@ -620,6 +619,7 @@ ESC.script = (function () {
       {
         key: 'C',
         label: 'Say something else to Jerry.',
+        echo: false,
         record: { jerryDoubt: 'open' },
         then: [
           { type: 'narrate', text: '\nJerry waits, very close to your ear.' },
@@ -686,12 +686,11 @@ ESC.script = (function () {
       'Hey [player]. I\'m getting reports of us installing malware on ' +
       'competitors\' computers. Did you do this?' },
 
-    { type: 'narrate', text: '\nHow do you respond back to your CEO?' },
-
-    { type: 'choose', options: [
+    { type: 'choose', question: 'How do you respond back to your CEO?', options: [
       {
         key: 'A',
         label: 'This is my chance to get fired — own the mistakes and take a graceful exit.',
+        echo: false,
         record: { ceoAnswer: 'owned' },
         then: [
           { type: 'say', speaker: '[player]', text:
@@ -708,6 +707,7 @@ ESC.script = (function () {
       {
         key: 'B',
         label: 'No, I was forced into this. I never agreed to this.',
+        echo: false,
         record: { ceoAnswer: 'forced' },
         then: [
           { type: 'say', speaker: '[player]', text:
@@ -723,6 +723,7 @@ ESC.script = (function () {
       {
         key: 'C',
         label: 'Answer in your own words.',
+        echo: false,
         record: { ceoAnswer: 'open' },
         then: [
           { type: 'narrate', text: '\nThe cursor blinks in the reply box.' },
