@@ -36,7 +36,8 @@ ESC.ui = (function () {
   ui.init = function () {
     ['crt','title-card','title-art','title-prompt','login','login-brand',
      'login-body','boot','boot-field','game','id-photo','id-name','id-role',
-     'id-stat-list','id-bio-text','info-button','gauges','terminal',
+     'id-stat-list','id-bio-text','info-button','caption-bar','caption-text',
+     'progress','terminal',
      'terminal-scroll','input-bar','input-prompt','input-ghost','input-typed',
      'input-caret','input-hint','modal-layer','modal-title','modal-body',
      'modal-close','modal-hint','file-layer','file-window','file-body','file-close'
@@ -44,8 +45,6 @@ ESC.ui = (function () {
       el[id] = $(id);
     });
 
-    el.gaugeHp   = document.querySelector('.gauge[data-gauge="hp"]');
-    el.gaugeTime = document.querySelector('.gauge[data-gauge="time"]');
 
     el['title-art'].textContent   = ui.art.title;
     el['login-brand'].textContent = ui.art.replak;
@@ -66,8 +65,8 @@ ESC.ui = (function () {
     });
 
     ESC.state.onChange(function (what) {
-      if (what === 'hp' || what === 'reset')   ui.syncHp();
-      if (what === 'time' || what === 'reset') ui.syncTime();
+      if (what === 'locate'   || what === 'reset') ui.syncCaption();
+      if (what === 'progress' || what === 'reset') ui.syncProgress();
     });
   };
 
@@ -76,14 +75,14 @@ ESC.ui = (function () {
      ==================================================================== */
 
   ui.art = {
-    /* (ESC)APE — the parens are real parens, 4 cells wide; letters are 8. */
+    /* FIRE(ESC)APE — parens are real parens, 4 cells wide; letters are 8. */
     title: [
-      ' ██╗███████╗███████╗ ██████╗██╗   █████╗ ██████╗ ███████╗',
-      '██╔╝██╔════╝██╔════╝██╔════╝╚██╗ ██╔══██╗██╔══██╗██╔════╝',
-      '██║ █████╗  ███████╗██║      ██║ ███████║██████╔╝█████╗  ',
-      '██║ ██╔══╝  ╚════██║██║      ██║ ██╔══██║██╔═══╝ ██╔══╝  ',
-      '╚██╗███████╗███████║╚██████╗██╔╝ ██║  ██║██║     ███████╗',
-      ' ╚═╝╚══════╝╚══════╝ ╚═════╝╚═╝  ╚═╝  ╚═╝╚═╝     ╚══════╝'
+      '███████╗██╗██████╗ ███████╗ ██╗███████╗███████╗ ██████╗██╗   █████╗ ██████╗ ███████╗',
+      '██╔════╝██║██╔══██╗██╔════╝██╔╝██╔════╝██╔════╝██╔════╝╚██╗ ██╔══██╗██╔══██╗██╔════╝',
+      '█████╗  ██║██████╔╝█████╗  ██║ █████╗  ███████╗██║      ██║ ███████║██████╔╝█████╗  ',
+      '██╔══╝  ██║██╔══██╗██╔══╝  ██║ ██╔══╝  ╚════██║██║      ██║ ██╔══██║██╔═══╝ ██╔══╝  ',
+      '██║     ██║██║  ██║███████╗╚██╗███████╗███████║╚██████╗██╔╝ ██║  ██║██║     ███████╗',
+      '╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═╝╚══════╝╚══════╝ ╚═════╝╚═╝  ╚═╝  ╚═╝╚═╝     ╚══════╝'
     ].join('\n'),
 
     replak: [
@@ -95,25 +94,6 @@ ESC.ui = (function () {
       '╚═╝  ╚═╝╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚═╝'
     ].join('\n'),
 
-    /* Double-quoted so apostrophes stay literal; "\\" is one backslash. */
-    porcupine: [
-      "            \\|/   \\|/   \\|/   \\|/",
-      "         \\|/   \\|/   \\|/   \\|/   \\|/",
-      "       \\|/                           \\|/",
-      "     .---------------------------------.",
-      "    /                                   \\",
-      "   |    ●                                \\",
-      "   |            ▼                         \\____",
-      "   |           \\__/                             \\",
-      "    \\                                      ______/",
-      "     '-------------------------------.---'",
-      "      |  .--------------------.      |",
-      "      |  |     REPLAK.AI      |      |",
-      "      |  |     CONTRACTOR     |      |",
-      "      '--'--------------------'------'",
-      "         ||                   ||",
-      "         ''                   ''"
-    ].join('\n')
   };
 
   /* ======================================================================
@@ -173,11 +153,12 @@ ESC.ui = (function () {
     var p = document.createElement('p');
     p.className = 'line-' + kind;
 
-    /* Speaker label — never for the narrator. */
+    /* Speaker label — never for the narrator. Interpolated too, so a line
+       attributed to "[player]" carries the name the player typed. */
     if (speaker && speaker.toUpperCase() !== 'NARRATOR') {
       var tag = document.createElement('span');
       tag.className = 'speaker';
-      tag.textContent = speaker + ': ';
+      tag.textContent = ESC.state.interpolate(speaker) + ': ';
       p.appendChild(tag);
     }
 
@@ -276,47 +257,148 @@ ESC.ui = (function () {
     el['terminal-scroll'].innerHTML = '';
   };
 
+  /* "Fresh terminal screen." — the script's own scene transition. */
+  ui.freshScreen = function () {
+    return sleep(260).then(function () {
+      ui.clearTerminal();
+      el.terminal.scrollTop = 0;
+      return sleep(240);
+    });
+  };
+
+  /*
+     "The email is formatted on the screen like a standard desktop email,
+      contained inside a box in the terminal."
+  */
+  ui.printEmail = function (mail) {
+    var box = document.createElement('div');
+    box.className = 'mail';
+
+    [['From', mail.from], ['Subject', mail.subject]].forEach(function (row) {
+      var h = document.createElement('div');
+      h.className = 'mail-head';
+      var k = document.createElement('span');
+      k.className = 'mail-key';
+      k.textContent = row[0] + ': ';
+      h.appendChild(k);
+      h.appendChild(document.createTextNode(ESC.state.interpolate(row[1])));
+      box.appendChild(h);
+    });
+
+    var body = document.createElement('div');
+    body.className = 'mail-body';
+    body.textContent = ESC.state.interpolate(mail.body);
+    box.appendChild(body);
+
+    el['terminal-scroll'].appendChild(box);
+    scrollDown();
+    return sleep(300);
+  };
+
+  /* "The CEO message shows up formatted as a chat message on the screen." */
+  ui.printChat = function (msg) {
+    var box = document.createElement('div');
+    box.className = 'chat';
+
+    var head = document.createElement('div');
+    head.className = 'chat-head';
+    head.textContent = ESC.state.interpolate(msg.from);
+    box.appendChild(head);
+
+    var body = document.createElement('div');
+    body.className = 'chat-body';
+    box.appendChild(body);
+
+    el['terminal-scroll'].appendChild(box);
+    scrollDown();
+
+    /* Typed, like someone on the other end is writing it. */
+    var text = ESC.state.interpolate(msg.text);
+    var speed = (msg.speed !== undefined) ? msg.speed : ui.speeds.say;
+    if (speed === 0) { body.textContent = text; scrollDown(); return Promise.resolve(); }
+
+    ui.skipRequested = false;
+    return new Promise(function (resolve) {
+      var i = 0;
+      (function step() {
+        if (ui.skipRequested) { body.textContent = text; ui.skipRequested = false; scrollDown(); return resolve(); }
+        if (i >= text.length) { scrollDown(); return resolve(); }
+        body.textContent += text.charAt(i++);
+        scrollDown();
+        setTimeout(step, speed);
+      })();
+    });
+  };
+
+  /* 'The game shows "Click to continue" in italics at the bottom.' */
+  ui.clickToContinue = function (label) {
+    var p = document.createElement('p');
+    p.className = 'continue';
+    p.textContent = label || 'Click to continue';
+    el['terminal-scroll'].appendChild(p);
+    scrollDown();
+
+    return new Promise(function (resolve) {
+      function done(e) {
+        if (e.type === 'keydown' && (e.metaKey || e.ctrlKey || e.altKey)) return;
+        if (!el['modal-layer'].classList.contains('hidden')) return;
+        if (!el['file-layer'].classList.contains('hidden')) return;
+        document.removeEventListener('keydown', done);
+        document.removeEventListener('click', done);
+        if (p.parentNode) p.parentNode.removeChild(p);
+        resolve();
+      }
+      document.addEventListener('keydown', done);
+      document.addEventListener('click', done);
+    });
+  };
+
+  /* "The game shows a button to click to restart the game." */
+  ui.showRestart = function (label) {
+    var wrap = document.createElement('div');
+    wrap.className = 'restart-wrap';
+    var b = document.createElement('button');
+    b.className = 'restart-btn';
+    b.type = 'button';
+    b.textContent = label || '[ PLAY AGAIN ]';
+    wrap.appendChild(b);
+    el['terminal-scroll'].appendChild(wrap);
+    scrollDown();
+
+    return new Promise(function (resolve) {
+      b.addEventListener('click', function () { resolve(); });
+    });
+  };
+
   /* ======================================================================
-     GAUGES
+     CAPTION BAR + PROGRESS
+     FIRE(ESC)APE has no resource gauges. The clock is a narrative caption the
+     script sets, and progress is how far through the scenes you are.
      ==================================================================== */
 
-  ui.showGauges = function () { el.gauges.classList.add('visible'); };
-
-  function paintGauge(node, fraction, label) {
-    var fill = node.querySelector('.gauge-fill');
-    var val  = node.querySelector('.gauge-value');
-    fill.style.width = Math.max(0, Math.min(1, fraction)) * 100 + '%';
-    val.textContent = label;
-
-    node.classList.remove('warn', 'crit');
-    if (fraction <= 0.15)      node.classList.add('crit');
-    else if (fraction <= 0.35) node.classList.add('warn');
-
-    /* Visible tick so a change is never silent — the brief asks for the
-       bars to animate when they update. */
-    node.classList.remove('bumping');
-    void node.offsetWidth;          // restart the keyframe
-    node.classList.add('bumping');
-  }
-
-  ui.syncHp = function () {
-    if (!el.gaugeHp) return;
-    paintGauge(el.gaugeHp, ESC.state.hpFraction(), Math.round(ESC.state.hp) + '%');
+  ui.showChrome = function () {
+    el['caption-bar'].classList.add('visible');
+    el.progress.classList.add('visible');
   };
 
-  ui.syncTime = function () {
-    if (!el.gaugeTime) return;
-    paintGauge(el.gaugeTime, ESC.state.timeFraction(),
-               ESC.state.timeString() + '');
+  ui.syncCaption = function () {
+    if (!el['caption-text']) return;
+    el['caption-text'].textContent = ESC.state.caption();
+    el['caption-bar'].classList.remove('bumping');
+    void el['caption-bar'].offsetWidth;
+    el['caption-bar'].classList.add('bumping');
   };
 
-  ui.syncGauges = function () { ui.syncHp(); ui.syncTime(); };
-
-  /* A visible clock note in the terminal when time moves. */
-  ui.noteTime = function (spent) {
-    if (!spent) return;
-    ui.printLine('— ' + spent + ' min — ' + ESC.state.timeString() + ' —', 'clock');
+  ui.syncProgress = function () {
+    if (!el.progress) return;
+    var fill = el.progress.querySelector('.progress-fill');
+    var val  = el.progress.querySelector('.progress-value');
+    fill.style.width = ESC.state.progressFraction() * 100 + '%';
+    val.textContent = 'SCENE ' + Math.min(ESC.state.sceneIndex + 1, ESC.state.sceneTotal) +
+                      ' / ' + ESC.state.sceneTotal;
   };
+
+  ui.syncChrome = function () { ui.syncCaption(); ui.syncProgress(); };
 
   /* ======================================================================
      ID PANEL

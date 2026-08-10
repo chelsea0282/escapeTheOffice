@@ -1,20 +1,28 @@
 /* ============================================================================
    RESPONDER — the scripted stand-in for the LLM
    ----------------------------------------------------------------------------
-   The brief has the game "call an LLM model to evaluate the responses of the
-   player" during <Open input response:> sections. This build has no model, so
-   this file does that job deterministically:
+   The brief calls for a model at each <Open input response:>. This build has
+   none, so this file does the job deterministically.
 
-       classify intent  ->  score the reasoning  ->  apply the scene's rubric
+   Its job in FIRE(ESC)APE is the opposite of a normal dialogue system. It does
+   not judge the player. Per the doc:
 
-   Everything tunable lives in LEXICON and RUBRICS at the top. The prose lives
-   in content/responses.js. Nothing here writes to the DOM.
+       "No matter what the player inputs, it should be incorporated in the
+        story. Find a way to justify what the player is doing. No matter what
+        the player input is, it should be spun into a good thing that Jamie
+        gets rewarded for."
 
-   The scoring that matters most: a justification is judged by whether it is
-   GROUNDED — whether it uses terms that actually exist in this fictional world
-   (see ESC.world.groundingTerms). Vague conviction scores low; "the search bar
-   and notifications are the committed features" scores high. That is the whole
-   trick that lets a keyword engine feel like it is reading for meaning.
+   So there is no accept/reject and no score to beat. The responder reads the
+   REGISTER of what you typed — professional, curt, rude, confused, kind,
+   pushing back, trying to leave — and returns the flavour of praise the doc
+   assigns to it. You cannot lose. That is the joke.
+
+   Two restrictions from the doc's Gameplay notes are enforced here:
+     * one turn, then back on script  (`resolve: true` on every verdict)
+     * "if an action can't be justified, give players only options of A or B
+        that would get them back on track"  (`fallback: true` on nonsense)
+
+   Prose lives in content/responses.js. Nothing here writes to the DOM.
    ========================================================================== */
 
 window.ESC = window.ESC || {};
@@ -27,230 +35,96 @@ ESC.responder = (function () {
 
   var LEXICON = {
 
-    comply: [
-      'ok', 'okay', 'fine', 'sure', 'yes', 'yeah', 'yep', 'will do', 'on it',
-      'i\'ll do', 'ill do', 'i will do', 'i can do', 'happy to', 'no problem',
-      'consider it done', 'got it', 'understood', 'sounds good', 'agreed',
-      'i\'ll take', 'ill take', 'i\'ll handle', 'ill handle',
-      /* NB: bare "let me" is deliberately absent — it reads as compliance but
-         usually introduces an inspection ("let me look at my phone"). */
-      'ask rachel', 'message rachel', 'msg rachel', 'ping rachel', 'loop rachel',
-      'check with rachel', 'defer to rachel', 'let rachel', 'rachel should',
-      'set up', 'schedule', 'send the invite', 'send an invite', 'book',
-      'calendar', 'i\'ll send', 'ill send', 'i\'ll set', 'ill set',
-      'i\'ll reply', 'ill reply', 'i\'ll respond', 'ill respond'
+    /* Saying the quiet part out loud. The office does not hear it. */
+    quit: [
+      'i quit', 'i am quitting', 'i\'m quitting', 'im quitting', 'resign',
+      'resignation', 'fire me', 'get fired', 'want to be fired', 'let me go',
+      'i want out', 'two weeks notice', 'my notice', 'i am done here',
+      'i\'m done here', 'im done here', 'i am leaving the company'
     ],
 
-    avoid: [
-      'later', 'not now', 'tomorrow', 'next week', 'no time', 'don\'t have time',
-      'dont have time', 'i have to go', 'i need to go', 'i\'m leaving', 'im leaving',
-      'gotta go', 'not my job', 'not my problem', 'someone else', 'ask someone',
-      'ignore', 'skip', 'pass', 'nope', 'no thanks', 'can\'t right now',
-      'cant right now', 'busy', 'eod tomorrow', 'circle back', 'take it offline',
-      'punt', 'defer', 'park it', 'not today',
-      'refuse', 'i refuse', 'let me leave', 'let me go', 'let me out',
-      'get out of my way', 'move aside', 'move out of the way', 'i\'m going',
-      'im going', 'i\'m done', 'im done', 'go away', 'leave me alone'
+    rude: [
+      'idiot', 'stupid', 'shut up', 'hate you', 'i hate', 'useless', 'moron',
+      'incompetent', 'terrible', 'awful', 'screw you', 'damn', 'hell',
+      'kill', 'punch', 'destroy you', 'burn', 'scream', 'yell', 'insane',
+      'ridiculous', 'nonsense', 'garbage', 'trash', 'worst', 'fed up',
+      'sick of', 'furious', 'angry'
     ],
 
-    inspect: [
-      'look at', 'look around', 'check the', 'check my', 'inspect', 'examine',
-      'read the', 'open my', 'open the', 'what is the', 'what\'s the',
-      'whats the', 'tell me about', 'who is', 'what about the', 'search',
-      'pick up', 'glance at', 'study'
+    confused: [
+      'i don\'t know', 'i dont know', 'no idea', 'confused', 'what is going on',
+      'what\'s going on', 'whats going on', 'i don\'t understand',
+      'i dont understand', 'huh', 'wait what', 'i am lost', 'i\'m lost',
+      'not sure', 'unclear', 'what happened'
     ],
 
-    move: [
-      'walk to', 'walk over', 'go to', 'head to', 'get up', 'stand up',
-      'leave my desk', 'go get', 'run to', 'step away', 'go find', 'go outside',
-      'go home', 'walk out', 'wander', 'move to'
+    empathy: [
+      'i understand', 'i hear you', 'that makes sense', 'are you ok',
+      'are you okay', 'i feel', 'i know how', 'it\'s hard', 'its hard',
+      'take care', 'look after yourself', 'you matter', 'i\'m sorry you',
+      'im sorry you', 'that sounds', 'i appreciate you'
     ],
 
-    reality: [
-      'is this real', 'is this really', 'am i dreaming', 'this isn\'t real',
-      'this isnt real', 'not real', 'hallucinat', 'am i awake', 'wake up',
-      'is this happening', 'losing my mind', 'going crazy', 'a dream',
-      'what is happening to me', 'am i okay'
+    nice: [
+      'thank you', 'thanks', 'great job', 'well done', 'good work', 'proud',
+      'appreciate', 'you\'re great', 'youre great', 'nice work', 'love that',
+      'brilliant', 'amazing work', 'you rock'
     ],
 
-    question: [
-      'why are you', 'who are you', 'what are you', 'how are you',
-      'why do you', 'what do you mean', 'says who', 'who told you',
-      'do you have a manager', 'are you a metaphor', 'explain yourself'
+    pushback: [
+      'we shouldn\'t', 'we shouldnt', 'this is wrong', 'that\'s wrong',
+      'thats wrong', 'illegal', 'a crime', 'not ok', 'not okay', 'bad idea',
+      'i disagree', 'i object', 'push back', 'against this', 'unethical',
+      'we can\'t do that', 'we cant do that', 'refuse', 'no way',
+      'shouldn\'t do', 'shouldnt do'
     ],
 
-    askEmail: [
-      'what email', 'which email', 'what\'s the email', 'whats the email',
-      'what is the email', 'about the email', 'tell me about the email',
-      'what does the email', 'what did the client'
+    /* Physically removing yourself from the situation. */
+    leave: [
+      'walk away', 'get up', 'leave', 'go home', 'bathroom', 'restroom',
+      'do nothing', 'ignore', 'say nothing', 'stay silent', 'log off',
+      'close the laptop', 'go outside', 'take a break', 'step out', 'hide'
     ],
 
-    /* Scenario 3 easter egg. These must ASSERT completion — bare words like
-       "complete" are deliberately absent, so an honest status report ("the
-       search bar is code complete") is not mistaken for the lie. */
-    done: [
-      'already done', 'is done', 'it\'s done', 'its done', 'are done',
-      'all done', 'fully done', 'is finished', 'are finished', 'is complete',
-      'are complete', 'we\'re done', 'were done', 'we finished', 'we completed',
-      'we shipped', 'shipped it', 'we launched', 'launched it',
-      'everything is done', 'nothing left', 'hit all', 'met all'
-    ],
-
-    causal: [
-      'because', 'since', 'so that', 'given that', 'given the', 'the reason',
-      'which means', 'therefore', 'that way', 'in order to', 'due to',
-      'otherwise', 'if we', 'the tradeoff', 'trade-off', 'the risk is',
-      'the impact', 'depends on'
-    ],
-
-    /* Things that cannot happen in an eighth-floor office. Drives the warp. */
-    absurd: [
-      'fly', 'flying', 'teleport', 'explode', 'explodes', 'dragon', 'wizard',
-      'magic', 'spell', 'laser', 'time travel', 'dinosaur', 'alien', 'ghost',
-      'banana', 'eat the', 'set fire', 'burn down', 'punch', 'kill', 'murder',
-      'nuke', 'summon', 'portal', 'sword', 'unicorn', 'shark', 'volcano',
-      'become a bird', 'zombie', 'robot uprising', 'defenestrate'
+    /* Reads as a real work reply. */
+    professional: [
+      'apolog', 'sorry for', 'thanks for flagging', 'thank you for flagging',
+      'looking into', 'investigate', 'root cause', 'rollback', 'roll back',
+      'revert', 'timeline', 'update you', 'follow up', 'circle back',
+      'happy to', 'let me know', 'best regards', 'regards', 'hi chris',
+      'hi jerry', 'hi rachel', 'i will', 'i\'ll', 'ill ', 'we will', 'we\'ll'
     ]
-  };
-
-  /* ======================================================================
-     RUBRICS — per-scene thresholds and time costs, straight from the brief
-     ==================================================================== */
-
-  /*
-     `cost` is minutes off the clock — these numbers come straight from the
-     brief's bullet lists. `hp` is the attrition that keeps the second gauge
-     live for the whole game: getting nowhere is tiring, and stonewalling is
-     the most tiring thing of all.
-  */
-  var HP = { rejected: 3, nonsense: 2, move: 1, edge: 1, inspect: 0, resolved: 0 };
-
-  var RUBRICS = {
-    s1: {                         // Jerry
-      speaker:   'Jerry',
-      threshold: 4.0,             // how well-reasoned a justification must be
-      maxTurns:  5,
-      hp:        HP,
-      cost: {
-        comply:      5,           // messaging Rachel takes 5 minutes off
-        accepted:    1,           // Jerry takes the action item
-        rejected:    1,           // back-and-forth with Jerry
-        failout:     5,           // Rachel's ruling comes back
-        inspect:     1,
-        move:        1,
-        nonsense:    1,
-        edge:        1
-      }
-    },
-    s2: {                         // Rachel
-      speaker:   'Rachel',
-      threshold: 3.5,
-      maxTurns:  5,
-      hp:        HP,
-      cost: {
-        comply:      3,
-        accepted:    1,
-        rejected:    1,
-        failout:     5,           // you end up replying to the email
-        inspect:     1,
-        move:        1,
-        nonsense:    1,
-        edge:        1
-      }
-    },
-    s3: {                         // The porcupine
-      speaker:   'Porcupine',
-      threshold: 3.0,
-      maxTurns:  6,               // mercy valve; it does not have a fail state
-      hp:        HP,
-      cost: {
-        comply:      1,
-        accepted:    1,
-        rejected:    1,
-        failout:     1,
-        inspect:     1,
-        move:        1,
-        nonsense:    1,
-        edge:        1
-      }
-    }
   };
 
   /* ======================================================================
      TEXT UTILITIES
      ==================================================================== */
 
-  /* A small stoplist so "unknown word" means something. */
   var COMMON = ('a an and are as at be been but by can cant could did do does ' +
     'dont for from get go going had has have he her him his how i if in is it ' +
     'its just let me my no not now of on or our out she should so some than ' +
     'that the their them then there these they this to too up us was we were ' +
-    'what when where which who why will with would you your yours am been being ' +
+    'what when where which who why will with would you your yours am being ' +
     'about after all also any because before both down during each few more ' +
-    'most other over same such only own very will need needs want wants make ' +
-    'made take takes give gives tell tells say says think thinks know knows ' +
-    'time day today tomorrow yesterday morning evening tonight week month ' +
-    'work working done here well right okay ok yes yeah nope sorry ' +
-    'thanks thank please really actually maybe probably still even back one two ' +
-    'three first next last new good bad big small long short late early ' +
-    'sure fine wait stop help leave leaving go going get got put ask asks ' +
-    'told tell explain because sorry never always again already almost ' +
-    'anything something nothing everyone someone people thing things').split(' ');
+    'most other over same such only own very need needs want wants make made ' +
+    'take takes give tell say says think know time day today tomorrow work ' +
+    'working done here well right okay ok yes yeah nope sorry thanks thank ' +
+    'please really actually maybe probably still even back one two three ' +
+    'first next last new good bad big small long short late early sure fine ' +
+    'wait stop help leave going got put ask told explain never always again ' +
+    'already almost anything something nothing everyone someone people thing ' +
+    'things email send sent reply chris jerry rachel jamie').split(' ');
 
-  function norm(s) {
-    return (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
-  }
+  function norm(s) { return (s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 
   function words(s) {
     return norm(s).replace(/[^a-z0-9' ]/g, ' ').split(/\s+/).filter(Boolean);
   }
 
-  function hits(text, list) {
+  function hits(t, list) {
     var n = 0;
-    for (var i = 0; i < list.length; i++) {
-      if (text.indexOf(list[i]) !== -1) n++;
-    }
+    for (var i = 0; i < list.length; i++) if (t.indexOf(list[i]) !== -1) n++;
     return n;
-  }
-
-  /* ======================================================================
-     NONSENSE DETECTION
-     The brief asks for "rejecting a blatantly nonsensical response" as its
-     own reusable mechanic. Deliberately conservative — real play should
-     never trip it.
-     ==================================================================== */
-
-  function isNonsense(raw) {
-    var t = norm(raw);
-    if (t.length < 2) return true;
-    if (!/[a-z]/.test(t)) return true;                 // digits/punctuation only
-
-    var w = words(t);
-    if (!w.length) return true;
-
-    /* Keyboard mash. Two tells: no vowels at all, or an implausible run of
-       consonants ("asdkjfh"). Words the world already knows are exempt, so
-       jargon never trips this. */
-    var mashy = w.filter(function (x) {
-      if (x.length < 4) return false;
-      if (COMMON.indexOf(x) !== -1) return false;
-      if (isKnownTerm(x)) return false;
-      if (!/[aeiouy]/.test(x)) return true;
-      return /[^aeiouy]{4,}/.test(x);
-    }).length;
-    if (mashy >= 1 && w.length <= 3) return true;
-    if (mashy / w.length > 0.5) return true;
-
-    /* One character held down. */
-    if (/^(.)\1{4,}$/.test(t.replace(/\s/g, ''))) return true;
-
-    /* Recognisable-word ratio: is any of this English we know? */
-    var known = w.filter(function (x) {
-      return COMMON.indexOf(x) !== -1 || isKnownTerm(x);
-    }).length;
-    if (w.length >= 3 && known === 0) return true;
-
-    return false;
   }
 
   function isKnownTerm(x) {
@@ -260,390 +134,133 @@ ESC.responder = (function () {
   }
 
   /* ======================================================================
-     SCORING
+     NONSENSE — the only thing the office will not absorb
+     The doc: "If an action can't be justified, give players only options of
+     A or B that would get them back on track."
      ==================================================================== */
 
-  /* How grounded is this in the actual fiction? */
-  function groundingScore(t) {
-    var found = 0;
-    var seen = {};
-    ESC.world.groundingTerms.forEach(function (g) {
-      if (!seen[g] && t.indexOf(g) !== -1) { seen[g] = 1; found++; }
-    });
-    return Math.min(4, found);
-  }
-
-  /* How absurd? Drives the warp intensity. */
-  function absurdityScore(raw) {
+  function isNonsense(raw) {
     var t = norm(raw);
-    var score = 0;
-    score += Math.min(2, hits(t, LEXICON.absurd));
-    if (/(.)\1{3,}/.test(t.replace(/\s/g, ''))) score += 1;
-    if (raw.length > 12 && raw === raw.toUpperCase() && /[A-Z]{6,}/.test(raw)) score += 1;
-    if (/!{3,}|\?{3,}/.test(raw)) score += 1;
-    return Math.min(3, score);
-  }
+    if (t.length < 2) return true;
+    if (!/[a-z]/.test(t)) return true;
 
-  /* Details asserted that the world has never heard of. */
-  function offScriptScore(raw) {
-    var w = words(raw);
-    var unknown = w.filter(function (x) {
+    var w = words(t);
+    if (!w.length) return true;
+
+    var mashy = w.filter(function (x) {
       if (x.length < 4) return false;
       if (COMMON.indexOf(x) !== -1) return false;
-      return !ESC.world.groundingTerms.some(function (g) {
-        return g.indexOf(x) !== -1 || x.indexOf(g) !== -1;
-      });
-    });
-    /* Capitalised mid-sentence words are the strongest tell: invented names. */
-    var propers = (raw.match(/(?!^)\b[A-Z][a-z]{2,}/g) || []).filter(function (p) {
-      var lp = p.toLowerCase();
-      return ['jamie','rachel','jerry','parker','porcupine','replak','standup',
-              'alignment','priority','roadmap','project','thursday'].indexOf(lp) === -1;
-    });
-    return Math.min(3, propers.length + (unknown.length >= 5 ? 1 : 0));
-  }
+      if (isKnownTerm(x)) return false;
+      if (!/[aeiouy]/.test(x)) return true;
+      return /[^aeiouy]{4,}/.test(x);
+    }).length;
+    if (mashy >= 1 && w.length <= 3) return true;
+    if (mashy / w.length > 0.5) return true;
+    if (/^(.)\1{4,}$/.test(t.replace(/\s/g, ''))) return true;
 
-  /* Overall quality of a justification. */
-  function qualityScore(raw) {
-    var t = norm(raw);
-    var w = words(raw);
-    var q = 0;
-    q += groundingScore(t) * 1.5;
-    q += Math.min(2, hits(t, LEXICON.causal)) * 1.2;
-    if (w.length >= 8)  q += 1;
-    if (w.length >= 16) q += 1;
-    if (/\b\d/.test(t)) q += 0.5;              // dates, counts, percentages
-    if (w.length <= 3)  q -= 1.5;              // one-word conviction
-    return q;
+    var known = w.filter(function (x) {
+      return COMMON.indexOf(x) !== -1 || isKnownTerm(x);
+    }).length;
+    if (w.length >= 3 && known === 0) return true;
+
+    return false;
   }
 
   /* ======================================================================
-     INTENT CLASSIFICATION
+     GROUNDING — does this reference things that exist in the world?
+     Used only to pick a more specific reply, never to pass or fail.
      ==================================================================== */
 
-  function classify(raw, scene) {
-    var t = norm(raw);
+  function groundingScore(t) {
+    var seen = {}, n = 0;
+    ESC.world.groundingTerms.forEach(function (g) {
+      if (!seen[g] && t.indexOf(g) !== -1) { seen[g] = 1; n++; }
+    });
+    return Math.min(4, n);
+  }
 
+  /* ======================================================================
+     CLASSIFY — read the register, not the merit
+     ==================================================================== */
+
+  function classify(raw) {
+    var t = norm(raw);
     if (isNonsense(raw)) return 'nonsense';
 
-    /* Scene-specific intents win when present — they are the most specific
-       readings available. The easter egg needs a completion claim, a subject
-       it plausibly refers to, and no negation hedging it. */
-    if (scene === 's3' && hits(t, LEXICON.done) > 0 &&
-        /\b(porcupine|project|kpis?|everything)\b/.test(t) &&
-        !/\b(not|isn't|isnt|aren't|arent|almost|nearly|nowhere near|far from)\b[^.]{0,24}(done|complete|finish)/.test(t)) {
-      return 'lie';
-    }
-    if (scene === 's2' && hits(t, LEXICON.askEmail) > 0) return 'askEmail';
+    var w = words(raw);
 
-    if (hits(t, LEXICON.reality) > 0) return 'reality';
+    /* Strongest signals first — these change which character answers. */
+    if (hits(t, LEXICON.quit) > 0)     return 'quit';
+    if (hits(t, LEXICON.rude) > 0)     return 'rude';
+    if (hits(t, LEXICON.pushback) > 0) return 'pushback';
+    if (hits(t, LEXICON.confused) > 0) return 'confused';
+    if (hits(t, LEXICON.empathy) > 0)  return 'empathy';
+    if (hits(t, LEXICON.leave) > 0)    return 'leave';
+    if (hits(t, LEXICON.nice) > 0)     return 'nice';
 
-    /* Questions aimed at the other party. */
-    if (hits(t, LEXICON.question) > 0) return 'question';
+    /* "If Jamie sends an email that is very short and/or non-descriptive,
+        Chris should praise Jamie for brevity." */
+    if (w.length <= 4) return 'brief';
 
-    var scores = {
-      comply:  hits(t, LEXICON.comply)  * 2,
-      avoid:   hits(t, LEXICON.avoid)   * 2,
-      inspect: hits(t, LEXICON.inspect) * 2.6,
-      move:    hits(t, LEXICON.move)    * 2.8
-    };
-
-    /* A causal, grounded statement is a justification even without keywords.
-       But grounding ALONE is weak evidence — "check the snake plant" mentions
-       a real object without arguing anything. So world terms only count for
-       much once there is a causal connective or real length behind them. */
-    var causal = hits(t, LEXICON.causal);
-    var ground = groundingScore(t);
-    var wc     = words(raw).length;
-    var arguing = (causal > 0 || wc >= 10);
-    scores.justify = causal * 2 +
-                     ground * (arguing ? 1.1 : 0.35) +
-                     (wc >= 10 ? 1.5 : 0);
-
-    /* "ok but because..." reads as justification, not bare compliance. */
-    if (scores.comply > 0 && causal > 0 && words(raw).length >= 8) {
-      scores.comply -= 1.5;
+    if (hits(t, LEXICON.professional) > 0 || groundingScore(t) >= 2) {
+      return 'professional';
     }
 
-    var best = 'justify';
-    var bestScore = -Infinity;
-    Object.keys(scores).forEach(function (k) {
-      if (scores[k] > bestScore) { bestScore = scores[k]; best = k; }
-    });
-
-    /* Nothing scored at all: treat short input as avoidance, long as justify. */
-    if (bestScore <= 0) return words(raw).length >= 8 ? 'justify' : 'avoid';
-
-    return best;
+    /* Everything else is off-topic — which the office also rewards. */
+    return 'irrelevant';
   }
 
   /* ======================================================================
-     PUBLIC: evaluate()
+     EVALUATE
      ----------------------------------------------------------------------
-     ctx = { scene: 's1'|'s2'|'s3', turn: <0-based> }
+     ctx = { scene: 's1'|'s2'|'s3'|'s4'|'s5' }
 
      Returns:
-       intent        classified intent
-       accepted      did the character buy it
-       resolved      is the scene over
-       consumesTurn  does this burn one of the max-5 turns
-       minutes       time cost
-       hp            hp cost (negative restores)
-       speaker       who replies ('' = narrator)
-       reply         the line to print
-       narration     extra narrator lines
-       warp          0..3
-       appendixId    if the player inspected something real
+       intent     the register that was read
+       lines      [{ speaker, text, kind }] — what the office says back
+       resolve    always true; one turn, then back on script (doc's rule)
+       fallback   true only for nonsense: show the A/B options instead
+       praise     whether this counted as the office rewarding you
      ==================================================================== */
 
-  function result(over) {
-    var base = {
-      intent: '', accepted: false, resolved: false, consumesTurn: true,
-      minutes: 0, hp: 0, speaker: '', reply: '', narration: [],
-      warp: 0, appendixId: null, kind: 'say'
-    };
-    Object.keys(over || {}).forEach(function (k) { base[k] = over[k]; });
-    return base;
-  }
-
   function evaluate(raw, ctx) {
-    var scene  = ctx.scene;
-    var turn   = ctx.turn || 0;
-    var R      = RUBRICS[scene];
-    var intent = classify(raw, scene);
-    var absurd = absurdityScore(raw);
-    var offs   = offScriptScore(raw);
-    var q      = qualityScore(raw);
+    var scene = ctx.scene;
+    var intent = classify(raw);
 
-    /* -- blatantly nonsensical: reject, cost a minute, don't burn a turn -- */
+    ESC.state.noteInput(raw);
+
     if (intent === 'nonsense') {
-      ESC.state.bump('nonsenseCount');
-      return result({
+      return {
         intent: 'nonsense',
-        consumesTurn: false,
-        minutes: R.cost.nonsense, hp: R.hp.nonsense,
-        speaker: 'REPLAK.AI SYSTEM',
-        kind: 'system',
-        reply: ESC.responses.pick('shared', 'nonsense', turn + ESC.state.ledger.nonsenseCount),
-        narration: [ESC.responses.pick('shared', 'nonsenseNarration', turn)],
-        warp: Math.max(1, absurd)
-      });
+        resolve: false,
+        fallback: true,          /* -> the scene falls back to A/B */
+        praise: false,
+        lines: [{
+          speaker: 'REPLAK.AI SYSTEM',
+          kind: 'system',
+          text: ESC.responses.pick('shared', 'nonsense', ESC.state.ledger.openInputs.length)
+        }]
+      };
     }
 
-    /* -- looking at something: costs a minute, doesn't burn a turn -------- */
-    if (intent === 'inspect') {
-      var entry = ESC.world.find(raw);
-      if (entry) {
-        ESC.state.noteInspected(entry.id);
-        return result({
-          intent: 'inspect', consumesTurn: false, minutes: R.cost.inspect,
-          appendixId: entry.id,
-          narration: [ESC.responses.pick('shared', 'inspectLead', turn) + ' ' + entry.text],
-          warp: absurd >= 2 ? 1 : 0
-        });
-      }
-      return result({
-        intent: 'inspect', consumesTurn: false, minutes: R.cost.inspect,
-        narration: [ESC.responses.pick('shared', 'inspectUnknown', turn)],
-        warp: absurd >= 2 ? 1 : 0
-      });
-    }
+    var lines = ESC.responses.reply(scene, intent, ESC.state.ledger.openInputs.length);
 
-    /* -- trying to walk away: a minute, and you stay at your desk --------- */
-    if (intent === 'move') {
-      ESC.state.bump('moveCount');
-      return result({
-        intent: 'move', consumesTurn: false, minutes: R.cost.move, hp: R.hp.move,
-        narration: [scene === 's3'
-          ? ESC.responses.pick('s3', 'refuse', turn)
-          : ESC.responses.pick('shared', 'move', turn)],
-        warp: absurd
-      });
-    }
+    ESC.state.bump('praiseCount');
 
-    /* ================= SCENARIO 3 — the porcupine ====================== */
-    if (scene === 's3') {
-
-      if (intent === 'lie') {
-        ESC.state.record('porcupineOutcome', 'lied');
-        return result({
-          intent: 'lie', accepted: true, resolved: true,
-          minutes: 0, speaker: 'Porcupine',
-          reply: ESC.responses.pick('s3', 'lie', 0),
-          warp: 2
-        });
-      }
-
-      if (intent === 'reality') {
-        return result({
-          intent: 'reality', consumesTurn: false, minutes: R.cost.edge, hp: R.hp.edge,
-          narration: [ESC.responses.pick('s3', 'reality', turn)],
-          warp: Math.max(1, absurd)
-        });
-      }
-
-      if (intent === 'question') {
-        return result({
-          intent: 'question', consumesTurn: false, minutes: R.cost.edge, hp: R.hp.edge,
-          speaker: 'Porcupine',
-          reply: ESC.responses.pick('s3', 'question', turn),
-          warp: absurd
-        });
-      }
-
-      if (intent === 'avoid') {
-        ESC.state.bump('avoidCount');
-        return result({
-          intent: 'avoid', minutes: R.cost.rejected, hp: R.hp.rejected,
-          narration: [ESC.responses.pick('s3', 'refuse', turn)],
-          warp: absurd
-        });
-      }
-
-      /* A real answer about the project's status satisfies it. */
-      if (q >= R.threshold - (offs ? 0 : 0.5)) {
-        ESC.state.record('porcupineOutcome', 'satisfied');
-        ESC.state.bump('justifyCount');
-        return result({
-          intent: intent, accepted: true, resolved: true,
-          minutes: R.cost.comply, speaker: 'Porcupine',
-          reply: ESC.responses.pick('s3', 'comply', turn),
-          warp: absurd
-        });
-      }
-
-      return result({
-        intent: intent, minutes: R.cost.rejected, hp: R.hp.rejected, speaker: 'Porcupine',
-        reply: ESC.responses.pick('s3', 'deflect', turn),
-        warp: absurd
-      });
-    }
-
-    /* ============== SCENARIOS 1 & 2 — Jerry and Rachel ================= */
-
-    /* Rachel explains the email. Information, not a turn. */
-    if (intent === 'askEmail') {
-      return result({
-        intent: 'askEmail', consumesTurn: false, minutes: R.cost.inspect,
-        speaker: R.speaker,
-        reply: ESC.responses.pick('s2', 'askEmail', 0),
-        warp: absurd
-      });
-    }
-
-    /* Questioning reality mid-negotiation: a minute, no progress. */
-    if (intent === 'reality' || intent === 'question') {
-      return result({
-        intent: intent, consumesTurn: false, minutes: R.cost.edge, hp: R.hp.edge,
-        speaker: R.speaker,
-        reply: ESC.responses.pick(scene, 'inspectFallback', turn) ||
-               ESC.responses.pick(scene, 'reject', turn),
-        warp: Math.max(absurd, 1)
-      });
-    }
-
-    /* Compliance. */
-    if (intent === 'comply') {
-      ESC.state.bump('complyCount');
-      if (scene === 's1') {
-        ESC.state.record('jerryOutcome', 'deferred');
-        ESC.state.record('prioritization',
-          'doing both, after Rachel called it a launch blocker');
-      } else {
-        ESC.state.record('rachelOutcome', 'complied');
-      }
-      return result({
-        intent: 'comply', accepted: true, resolved: true,
-        minutes: R.cost.comply, speaker: R.speaker,
-        reply: ESC.responses.pick(scene, 'comply', turn),
-        warp: absurd
-      });
-    }
-
-    /* Avoidance — generates another turn, same shape as a rejection. */
-    if (intent === 'avoid') {
-      ESC.state.bump('avoidCount');
-      return result({
-        intent: 'avoid', minutes: R.cost.rejected, hp: R.hp.rejected, speaker: R.speaker,
-        reply: ESC.responses.pick(scene, 'avoid', turn),
-        warp: absurd
-      });
-    }
-
-    /* Justification. Off-script claims raise the bar, per the brief. */
-    ESC.state.bump('justifyCount');
-    var threshold = R.threshold + (offs > 0 ? 1.5 : 0);
-
-    if (offs > 0 && q < threshold) {
-      return result({
-        intent: 'offScript', minutes: R.cost.rejected, hp: R.hp.rejected, speaker: R.speaker,
-        reply: ESC.responses.pick(scene, 'offScript', turn),
-        warp: Math.max(absurd, 1)
-      });
-    }
-
-    if (q >= threshold) {
-      if (scene === 's1') {
-        ESC.state.record('jerryOutcome', 'justified');
-        ESC.state.record('prioritization', readPrioritization(raw));
-      } else {
-        ESC.state.record('rachelOutcome', 'negotiated');
-      }
-      return result({
-        intent: 'justify', accepted: true, resolved: true,
-        minutes: R.cost.accepted, speaker: R.speaker,
-        reply: ESC.responses.pick(scene, 'justifyAccepted', turn),
-        warp: absurd
-      });
-    }
-
-    return result({
-      intent: 'justify', minutes: R.cost.rejected, hp: R.hp.rejected, speaker: R.speaker,
-      reply: ESC.responses.pick(scene, 'justifyRejected', turn),
-      warp: absurd
-    });
-  }
-
-  /* Which of Jerry's two indistinguishable options did the player land on? */
-  function readPrioritization(raw) {
-    var t = norm(raw);
-    var align = /alignment roadmap|prioritiz\w* the alignment|option 1|first one|number 1|\b1\b/.test(t);
-    var prior = /priority roadmap|align\w* the priority|option 2|second one|number 2|\b2\b/.test(t);
-    if (prior && !align) return 'Aligning the Priority Roadmap';
-    if (align && !prior) return 'Prioritizing the Alignment Roadmap';
-    return 'Prioritizing the Alignment Roadmap';
-  }
-
-  /* The fallback the brief specifies when the turn budget runs out. */
-  function failout(scene) {
-    var R = RUBRICS[scene];
-    if (scene === 's1') {
-      ESC.state.record('jerryOutcome', 'failed');
-      ESC.state.record('prioritization',
-        'doing both, after Rachel called it a launch blocker');
-    } else if (scene === 's2') {
-      ESC.state.record('rachelOutcome', 'emailed');
-    } else {
-      ESC.state.record('porcupineOutcome', 'satisfied');
-    }
-    return result({
-      intent: 'failout', resolved: true, minutes: R.cost.failout,
-      speaker: R.speaker,
-      reply: ESC.responses.pick(scene, 'failout', 0) ||
-             ESC.responses.pick(scene, 'comply', 0)
-    });
+    return {
+      intent: intent,
+      resolve: true,             /* one turn, then the script continues */
+      fallback: false,
+      praise: true,
+      lines: lines
+    };
   }
 
   return {
     evaluate:   evaluate,
-    failout:    failout,
     classify:   classify,
     isNonsense: isNonsense,
-    quality:    qualityScore,
     grounding:  groundingScore,
-    absurdity:  absurdityScore,
-    offScript:  offScriptScore,
-    LEXICON:    LEXICON,
-    RUBRICS:    RUBRICS
+    LEXICON:    LEXICON
   };
 })();

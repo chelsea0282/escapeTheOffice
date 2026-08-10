@@ -1,5 +1,5 @@
 /* ============================================================================
-   (ESC)APE — THE VISUAL SYSTEM
+   FIRE(ESC)APE — THE VISUAL SYSTEM
    ----------------------------------------------------------------------------
    This file owns EVERYTHING about how the game looks: colour, type, chrome,
    layout, CRT treatment, animation. Nothing in js/ sets an inline style; the
@@ -236,8 +236,8 @@ button:hover { color: var(--phosphor-bright); }
 
 /* ============================================================================
    MAIN GAMEPLAY LAYOUT
-   Brief: ID panel top-left; gauges above the terminal; terminal from the
-   middle to the right edge, taking up almost the rest of the page.
+   Brief: ID panel top-left; caption + progress above the terminal; terminal
+   from the middle to the right edge, taking up almost the rest of the page.
    ========================================================================== */
 
 #game {
@@ -340,78 +340,62 @@ button:hover { color: var(--phosphor-bright); }
   min-width: 0;
 }
 
-/* ---- gauges ---------------------------------------------------------- */
+/* ---- caption bar: "4:27PM - Your Desk, Second Floor" ------------------- */
 
-#gauges {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--gutter);
-  opacity: 0;
-  transition: opacity 600ms ease;
-}
-#gauges.visible { opacity: 1; }
-
-.gauge {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
-  border: var(--border-w) solid var(--phosphor-faint);
-  padding: 7px 11px;
+#caption-bar {
+  border: var(--border-w) solid var(--phosphor-dim);
   background: var(--bg-panel);
-}
-
-.gauge-label {
+  padding: 8px 14px;
   font-size: var(--fs-small);
-  letter-spacing: .18em;
-  color: var(--phosphor-dim);
+  letter-spacing: .16em;
+  color: var(--phosphor-bright);
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+#caption-bar.visible { opacity: 1; }
+
+#caption-bar.bumping { animation: caption-bump 620ms ease-out; }
+@keyframes caption-bump {
+  0%   { border-color: var(--phosphor-bright); background: rgba(51,255,102,.10); }
+  100% { border-color: var(--phosphor-dim);    background: var(--bg-panel); }
 }
 
-.gauge-track {
-  height: 13px;
+/* ---- progress bar ------------------------------------------------------ */
+
+#progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+#progress.visible { opacity: 1; }
+
+.progress-track {
+  height: 9px;
   border: var(--border-w) solid var(--phosphor-faint);
   overflow: hidden;
 }
 
-.gauge-fill {
+.progress-fill {
   height: 100%;
-  width: 100%;
-  transform-origin: left center;
+  width: 0%;
   background: repeating-linear-gradient(
     to right,
-    var(--phosphor) 0 7px,
-    transparent 7px 9px
+    var(--phosphor) 0 6px,
+    transparent 6px 8px
   );
-  transition: width var(--gauge-dur) var(--gauge-ease),
-              background-color 400ms linear;
+  transition: width var(--gauge-dur) var(--gauge-ease);
 }
 
-.gauge-value {
+.progress-value {
   font-size: var(--fs-small);
-  color: var(--phosphor-bright);
-  min-width: 7ch;
+  letter-spacing: .14em;
+  color: var(--phosphor-dim);
+  min-width: 11ch;
   text-align: right;
-}
-
-/* gauge severity — set by ui.js via class, never inline */
-.gauge.warn  .gauge-fill { background-image: repeating-linear-gradient(to right, var(--amber-warn) 0 7px, transparent 7px 9px); }
-.gauge.warn  .gauge-value { color: var(--amber-warn); }
-.gauge.crit  .gauge-fill { background-image: repeating-linear-gradient(to right, var(--red-error) 0 7px, transparent 7px 9px); }
-.gauge.crit  .gauge-value { color: var(--red-error); }
-.gauge.crit  { animation: gauge-pulse 1.1s ease-in-out infinite; }
-
-@keyframes gauge-pulse {
-  0%, 100% { border-color: var(--phosphor-faint); }
-  50%      { border-color: var(--red-error); }
-}
-
-/* the "bar changed" tick the brief asks to be visible */
-.gauge.bumping .gauge-track { animation: gauge-bump 420ms ease-out; }
-@keyframes gauge-bump {
-  0%   { transform: translateX(0); }
-  25%  { transform: translateX(-2px); }
-  60%  { transform: translateX(2px); }
-  100% { transform: translateX(0); }
 }
 
 /* ---- terminal -------------------------------------------------------- */
@@ -483,6 +467,74 @@ button:hover { color: var(--phosphor-bright); }
 .line-report { white-space: pre-wrap; color: var(--phosphor); }
 .line-report .rk { color: var(--phosphor-dim); }
 .line-report .rv { color: var(--phosphor-bright); }
+
+/* ---- the escalation email, "contained inside a box in the terminal" ---- */
+
+.mail {
+  border: var(--border-w) solid var(--phosphor-dim);
+  background: rgba(51, 255, 102, .04);
+  padding: 12px 15px;
+  margin: 0 0 .8em !important;
+}
+.mail-head {
+  font-size: var(--fs-small);
+  color: var(--phosphor);
+  padding-bottom: .25em;
+}
+.mail-head:nth-of-type(2) {
+  border-bottom: var(--border-w) solid var(--phosphor-faint);
+  margin-bottom: .7em;
+  padding-bottom: .6em;
+}
+.mail-key { color: var(--phosphor-dim); letter-spacing: .1em; }
+.mail-body { white-space: pre-wrap; color: var(--phosphor); }
+
+/* ---- the CEO's chat message ------------------------------------------- */
+
+.chat {
+  border-left: 3px solid var(--phosphor);
+  background: rgba(51, 255, 102, .05);
+  padding: 9px 14px;
+  margin: 0 0 .8em !important;
+  max-width: 46ch;
+}
+.chat-head {
+  font-size: var(--fs-small);
+  letter-spacing: .18em;
+  color: var(--phosphor-bright);
+  margin-bottom: .2em;
+}
+.chat-body { white-space: pre-wrap; color: var(--phosphor); }
+
+/* ---- "Click to continue" in italics ------------------------------------ */
+
+.continue {
+  font-style: italic;
+  font-size: var(--fs-small);
+  color: var(--phosphor-dim);
+  letter-spacing: .1em;
+  animation: continue-pulse 1.7s ease-in-out infinite;
+}
+@keyframes continue-pulse {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: 1; }
+}
+
+/* ---- restart button ---------------------------------------------------- */
+
+.restart-wrap { margin: 1.2em 0 !important; }
+.restart-btn {
+  border: var(--border-w) solid var(--phosphor);
+  color: var(--phosphor-bright);
+  padding: 8px 18px;
+  letter-spacing: .18em;
+  font-size: var(--fs-small);
+  background: var(--bg-panel);
+}
+.restart-btn:hover {
+  background: rgba(51, 255, 102, .14);
+  box-shadow: 0 0 18px rgba(51, 255, 102, .35);
+}
 
 .choice-list { list-style: none; padding: 0 0 0 1ch; margin: 0 0 .55em; }
 .choice-list li { color: var(--phosphor-dim); margin: .1em 0; }
