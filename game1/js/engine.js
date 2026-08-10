@@ -98,8 +98,6 @@ ESC.engine = (function () {
         } else {
           /* Wrong letter: turns red and disappears. */
           u.flashBadChar(e.key);
-          ESC.state.bump('typos');
-          if (opts.hpPerTypo) ESC.state.damage(opts.hpPerTypo);
           u.setHint('that is not what the message says');
         }
       });
@@ -242,108 +240,71 @@ ESC.engine = (function () {
   }
 
   /* ======================================================================
-     4. openInput({ scene, maxTurns })
+     4. openInput({ scene, fallback })
      ----------------------------------------------------------------------
-     The free-text negotiation loop. This is where the brief would call an
-     LLM; here it calls ESC.responder, which returns the same shape of
-     verdict: a reply, a time cost, and whether the scene is resolved.
+     The free-text moment. This is where the brief would call an LLM; here it
+     calls ESC.responder, which returns the same shape of verdict.
 
-     Loop rules from the brief:
-       * minimum 1 conversational turn, maximum 5
-       * exploration and nonsense cost a minute but do NOT burn a turn
-       * running out of turns drops to the scene's documented fail state
+     Two rules from the doc's Gameplay notes are enforced here:
+       * "within 1 turn, put them back on the script" — every verdict that is
+         not nonsense resolves immediately and the scene continues.
+       * "if an action can't be justified, give players only options of A or B
+         that would get them back on track" — nonsense falls back to the
+         scene's multiple-choice options.
      ==================================================================== */
 
   function openInput(cfg) {
     var u = U();
-    var scene    = cfg.scene;
-    var maxTurns = cfg.maxTurns || ESC.responder.RUBRICS[scene].maxTurns;
-    var turn = 0;
 
-    return (function loop() {
-      if (ESC.state.over) return Promise.resolve('over');
+    return readLine({
+      prompt: '>',
+      glow: true,
+      hint: cfg.hint || 'type your response and press ENTER'
+    }).then(function (input) {
+      u.printLine(input, 'player');
 
-      u.showInput('>', true);
-      u.setHint(cfg.hint || 'type your response and press ENTER');
+      var verdict = ESC.responder.evaluate(input, { scene: cfg.scene });
 
-      return readLine({ prompt: '>', glow: true, hint: cfg.hint || 'type your response and press ENTER' })
-        .then(function (input) {
-          /* Echo the player's own words into the transcript. */
-          u.printLine(input, 'player');
-
-          var verdict = ESC.responder.evaluate(input, { scene: scene, turn: turn });
-
-          return applyVerdict(verdict).then(function () {
-            if (ESC.state.over) return 'over';
-
-            if (verdict.consumesTurn) turn++;
-            ESC.state.record(
-              scene === 's1' ? 'jerryTurns' : scene === 's2' ? 'rachelTurns' : 'porcupineTurns',
-              turn
-            );
-
-            if (verdict.resolved) return 'resolved';
-
-            if (turn >= maxTurns) {
-              var f = ESC.responder.failout(scene);
-              return applyVerdict(f).then(function () { return 'failout'; });
-            }
-            return loop();
+      return speak(verdict.lines).then(function () {
+        /* Unparseable: hand them the approved options instead. */
+        if (verdict.fallback && cfg.fallback && cfg.fallback.length) {
+          return choose(cfg.fallback).then(function (picked) {
+            return applyChoice(picked);
           });
-        });
-    })();
-  }
-
-  /* Print a verdict and apply its costs. Shared by openInput and failout. */
-  function applyVerdict(v) {
-    var u = U();
-    var chain = Promise.resolve();
-
-    if (v.warp) {
-      chain = chain.then(function () {
-        return u.warp(v.warp).then(function () {
-          if (v.warp >= 2) {
-            ESC.state.record('warpLevel',
-              Math.max(ESC.state.ledger.warpLevel, v.warp));
-            return u.typeLine(
-              ESC.responses.pick('shared', 'warp', ESC.state.ledger.nonsenseCount + v.warp),
-              { kind: 'visual', speed: ESC.ui.speeds.fast }
-            );
-          }
-        });
-      });
-    }
-
-    if (v.reply) {
-      chain = chain.then(function () {
-        return u.typeLine(v.reply, {
-          kind: v.kind === 'system' ? 'system' : 'say',
-          speaker: v.speaker
-        });
-      });
-    }
-
-    (v.narration || []).forEach(function (n) {
-      if (!n) return;
-      chain = chain.then(function () {
-        return u.typeLine(n, { kind: 'narrate' });
+        }
+        return null;
       });
     });
+  }
 
-    if (v.minutes) {
+  /* Print a list of { speaker, text, kind } lines in order. */
+  function speak(lines) {
+    var chain = Promise.resolve();
+    (lines || []).forEach(function (l) {
       chain = chain.then(function () {
-        var spent = ESC.state.spend(v.minutes);
-        u.noteTime(spent);
-        return u.sleep(220);
+        return U().typeLine(l.text, { kind: l.kind || 'say', speaker: l.speaker });
       });
-    }
-    if (v.hp) {
-      chain = chain.then(function () {
-        if (v.hp > 0) ESC.state.damage(v.hp); else ESC.state.restore(-v.hp);
-      });
-    }
-
+    });
     return chain;
+  }
+
+  /* Shared by choose beats and open-input fallbacks. */
+  function applyChoice(picked) {
+    if (picked.record) {
+      Object.keys(picked.record).forEach(function (k) {
+        ESC.state.record(k, picked.record[k]);
+      });
+    }
+    if (picked.locate) ESC.state.locate(picked.locate[0], picked.locate[1]);
+    if (picked.fx) ESC.fx.play(picked.fx);
+    var chain = picked.then ? runScene(picked.then) : Promise.resolve();
+    return chain.then(function () {
+      /* Choosing the model-employee answer ends the run. */
+      if (picked.suddenDeath) {
+        ESC.state.suddenDeath(picked.suddenDeath);
+      }
+      return null;
+    });
   }
 
   /* ======================================================================
@@ -415,29 +376,45 @@ ESC.engine = (function () {
       return U().pause(b.ms || 600);
     },
 
-    gauges: function () {
-      U().showGauges();
-      U().syncGauges();
-      return U().sleep(500);
+    /* "The time/location text title updates to ..." */
+    locate: function (b) {
+      ESC.state.locate(b.time, b.location);
+      return U().sleep(b.wait === undefined ? 420 : b.wait);
     },
 
-    /* Spend or restore resources from the script. */
-    cost: function (b) {
-      if (b.minutes) {
-        var spent = ESC.state.spend(b.minutes);
-        U().noteTime(spent);
-      }
-      if (b.hp) ESC.state.damage(b.hp);
-      if (b.heal) ESC.state.restore(b.heal);
-      return U().sleep(320);
+    /* "Fresh terminal screen." */
+    freshScreen: function () {
+      return U().freshScreen();
     },
 
-    /* Push the clock to a fixed anchor without ever moving it backward. */
-    clockTo: function (b) {
-      var before = ESC.state.clock;
-      ESC.state.advanceTo(b.hour, b.minute);
-      if (ESC.state.clock > before) U().noteTime(ESC.state.clock - before);
-      return U().sleep(320);
+    /* 'The game shows "Click to continue" in italics.' */
+    continue: function (b) {
+      return U().clickToContinue(b.label);
+    },
+
+    /* The escalation email, boxed like a desktop client. */
+    email: function (b) {
+      return U().printEmail(b);
+    },
+
+    /* The CEO's message, formatted as a chat message. */
+    chat: function (b) {
+      return U().printChat(b);
+    },
+
+    /* "The game shows a button to click to restart the game." */
+    restart: function (b) {
+      return U().showRestart(b.label).then(function () {
+        ESC.state.reset(true);
+        if (ESC.main) return ESC.main.restart();
+      });
+    },
+
+    /* Show the caption bar and progress bar. */
+    chrome: function () {
+      U().showChrome();
+      U().syncChrome();
+      return U().sleep(400);
     },
 
     typeExact: function (b) {
@@ -449,23 +426,12 @@ ESC.engine = (function () {
 
     choose: function (b) {
       return choose(b.options).then(function (picked) {
-        if (picked.record) {
-          Object.keys(picked.record).forEach(function (k) {
-            ESC.state.record(k, picked.record[k]);
-          });
-        }
-        if (picked.minutes) {
-          var spent = ESC.state.spend(picked.minutes);
-          U().noteTime(spent);
-        }
-        if (picked.hp)   ESC.state.damage(picked.hp);
-        if (picked.heal) ESC.state.restore(picked.heal);
-        return picked.then ? runScene(picked.then) : null;
+        return applyChoice(picked);
       });
     },
 
     openInput: function (b) {
-      return openInput({ scene: b.scene, maxTurns: b.maxTurns, hint: b.hint });
+      return openInput({ scene: b.scene, hint: b.hint, fallback: b.fallback });
     },
 
     /* Arbitrary escape hatch for one-off moments (login, epilogue report). */
@@ -484,7 +450,7 @@ ESC.engine = (function () {
     var chain = Promise.resolve();
     beats.forEach(function (b) {
       chain = chain.then(function () {
-        if (ESC.state.over && !b.always) return null;
+        if (ESC.state.over && !b.always) return null;   // sudden death stops the scene
         var h = handlers[b.type];
         if (!h) {
           console.warn('[engine] unknown beat type:', b.type, b);
@@ -503,7 +469,8 @@ ESC.engine = (function () {
     readLine:      readLine,
     choose:        choose,
     openInput:     openInput,
-    applyVerdict:  applyVerdict,
+    speak:         speak,
+    applyChoice:   applyChoice,
     captureKeys:   captureKeys
   };
 })();

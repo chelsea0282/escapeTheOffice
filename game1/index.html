@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>(ESC)APE</title>
+<title>FIRE(ESC)APE</title>
 <link rel="stylesheet" href="theme.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
     <div id="title-by">
       <p>By</p>
       <p class="title-authors">CHELSEA HAN &amp; TIFFANY QUON</p>
-      <p class="title-date">Date: Aug 3, 2026 (latest ver)</p>
+      <p class="title-date">Date: Aug 9, 2026 (latest ver)</p>
     </div>
     <p id="title-prompt" class="blink">PRESS ANY KEY TO CONNECT</p>
   </section>
@@ -63,17 +63,16 @@
     <!-- Right: gauges over the terminal -->
     <div id="stage">
 
-      <div id="gauges">
-        <div class="gauge" data-gauge="hp">
-          <span class="gauge-label">HP</span>
-          <div class="gauge-track"><div class="gauge-fill"></div></div>
-          <span class="gauge-value">—</span>
-        </div>
-        <div class="gauge" data-gauge="time">
-          <span class="gauge-label">TIME LEFT</span>
-          <div class="gauge-track"><div class="gauge-fill"></div></div>
-          <span class="gauge-value">—</span>
-        </div>
+      <!-- "There is a line at the top of the terminal that shows the current
+           time and location where Jamie is." -->
+      <div id="caption-bar">
+        <span id="caption-text">4:00PM - Your Desk, Second Floor</span>
+      </div>
+
+      <!-- Gameplay note: "Show progress bar" -->
+      <div id="progress">
+        <div class="progress-track"><div class="progress-fill"></div></div>
+        <span class="progress-value">—</span>
       </div>
 
       <div id="terminal">

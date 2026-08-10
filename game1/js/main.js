@@ -1,5 +1,5 @@
 /* ============================================================================
-   MAIN — boot, scene sequencing, failure routing, debug helpers
+   MAIN — boot, scene sequencing, sudden-death routing, debug helpers
    ========================================================================== */
 
 window.ESC = window.ESC || {};
@@ -7,6 +7,31 @@ window.ESC = window.ESC || {};
 ESC.main = (function () {
 
   var started = false;
+
+  /* ======================================================================
+     THE RUN
+     ----------------------------------------------------------------------
+     Scenes are sequenced here rather than in content/script.js so the script
+     file stays purely declarative. scenario0 is empty in the doc, so it is
+     skipped automatically until beats are added to it.
+     ==================================================================== */
+
+  var ORDER = [
+    'tutorial',
+    'scenario0',
+    'scenario1',
+    'scenario2',
+    'scenario3',
+    'scenario4',
+    'scenario5',
+    'epilogue'
+  ];
+
+  function playable() {
+    return ORDER.filter(function (n) {
+      return (ESC.script[n] || []).length > 0;
+    });
+  }
 
   /* ======================================================================
      TITLE CARD
@@ -32,51 +57,32 @@ ESC.main = (function () {
   }
 
   /* ======================================================================
-     THE RUN
-     ----------------------------------------------------------------------
-     Scenes are sequenced here rather than in content/script.js so the script
-     file stays purely declarative.
+     SEQUENCING
      ==================================================================== */
 
-  var ORDER = [
-    'opening',
-    'tutorial',
-    'scenario1',
-    'standup',
-    'scenario2',
-    'scenario3',
-    'exit'
-  ];
-
   function playFrom(index) {
+    var scenes = playable();
+    ESC.state.sceneTotal = scenes.length;
+
     var chain = Promise.resolve();
-    for (var i = index; i < ORDER.length; i++) {
-      (function (name) {
+    for (var i = index; i < scenes.length; i++) {
+      (function (name, idx) {
         chain = chain.then(function () {
-          if (ESC.state.over) return null;          // a gauge hit zero
+          /* A SUDDEN DEATH ends the run — stop advancing. */
+          if (ESC.state.over) return null;
+          ESC.state.advanceScene(idx);
           return ESC.engine.runScene(ESC.script[name]);
         });
-      })(ORDER[i]);
+      })(scenes[i], i);
     }
-    return chain;
-  }
 
-  function finish() {
-    ESC.ui.hideInput();
-
-    var tail;
-    if (ESC.state.failure === 'time')    tail = ESC.script.failTime;
-    else if (ESC.state.failure === 'hp') tail = ESC.script.failHp;
-    else                                 tail = null;
-
-    var chain = Promise.resolve();
-    if (tail) {
-      chain = chain.then(function () { return ESC.engine.runScene(tail); });
-    }
-    /* The epilogue plays either way — the system files its report whether or
-       not you got out. That is the dramatic irony the brief asks for. */
     return chain.then(function () {
-      return ESC.engine.runScene(ESC.script.epilogue);
+      /* If a choice triggered sudden death, play that tail instead. */
+      if (ESC.state.outcome === 'suddenDeath') {
+        ESC.ui.hideInput();
+        return ESC.engine.runScene(ESC.script.suddenDeath);
+      }
+      return null;
     });
   }
 
@@ -84,12 +90,12 @@ ESC.main = (function () {
     if (started) return;
     started = true;
 
-    ESC.ui.syncGauges();
+    ESC.state.sceneTotal = playable().length;
+    ESC.ui.syncChrome();
 
     return titleCard()
       .then(function () { return ESC.script.login(); })
       .then(function () { return playFrom(0); })
-      .then(finish)
       .catch(function (err) {
         console.error('[ESC] run failed:', err);
         ESC.ui.printLine('SYSTEM FAULT — see console. ' + err, 'system');
@@ -97,71 +103,68 @@ ESC.main = (function () {
   }
 
   /* ======================================================================
-     DEBUG — so scenes 3+ are testable without replaying the intro
+     RESTART — "The game shows a button to click to restart the game."
+     Skips the title card and login; you keep your name and your photo.
+     ==================================================================== */
+
+  function restart() {
+    ESC.ui.setMood(null);
+    ESC.ui.clearTerminal();
+    ESC.ui.show('game');
+    ESC.state.sceneTotal = playable().length;
+    ESC.ui.syncChrome();
+    ESC.fx.play('bootBops');
+    return playFrom(0).catch(function (err) {
+      console.error('[ESC] restart failed:', err);
+    });
+  }
+
+  /* ======================================================================
+     DEBUG — so later scenes are testable without replaying the intro
      ==================================================================== */
 
   var debug = {
 
-    /* Skip straight into a scene with a plausible ledger already filled in. */
     jumpTo: function (sceneName, opts) {
       opts = opts || {};
       started = true;
-      var L = ESC.state.ledger;
-      if (!L.name) ESC.state.record('name', opts.name || 'Jamie');
-      if (!L.prioritization) {
-        ESC.state.record('prioritization', 'Prioritizing the Alignment Roadmap');
-      }
-      ESC.ui.setPortrait(ESC.ui.makePortrait(L.name));
-
+      if (!ESC.state.ledger.name) ESC.state.record('name', opts.name || 'Jamie');
+      ESC.ui.setPortrait(ESC.ui.makePortrait(ESC.state.ledger.name + '|cam'));
       ESC.ui.renderIdPanel();
       ESC.ui.show('game');
       ESC.ui.clearTerminal();
-      ESC.ui.showGauges();
-      ESC.ui.syncGauges();
+      ESC.ui.showChrome();
+      ESC.state.sceneTotal = playable().length;
+      ESC.ui.syncChrome();
 
-      var idx = ORDER.indexOf(sceneName);
+      var scenes = playable();
+      var idx = scenes.indexOf(sceneName);
       if (idx === -1) {
         if (ESC.script[sceneName]) return ESC.engine.runScene(ESC.script[sceneName]);
-        console.warn('[ESC] unknown scene:', sceneName, 'try:', ORDER.join(', '));
+        console.warn('[ESC] unknown scene:', sceneName, 'try:', scenes.join(', '));
         return Promise.resolve();
       }
-      return playFrom(idx).then(finish);
-    },
-
-    setClock: function (h, m) {
-      ESC.state.clock = h * 60 + m;
-      ESC.state.over = false;
-      ESC.state.failure = null;
-      ESC.ui.syncTime();
-      return ESC.state.timeString();
-    },
-
-    setHp: function (n) {
-      ESC.state.hp = n;
-      ESC.state.over = false;
-      ESC.state.failure = null;
-      ESC.ui.syncHp();
-      return n;
+      return playFrom(idx);
     },
 
     /* Inspect how the responder reads a line, without playing a turn. */
-    classify: function (text, scene) {
-      scene = scene || 's1';
+    classify: function (text) {
       return {
-        intent:     ESC.responder.classify(text, scene),
-        quality:    ESC.responder.quality(text).toFixed(2),
-        threshold:  ESC.responder.RUBRICS[scene].threshold,
-        grounding:  ESC.responder.grounding(text.toLowerCase()),
-        absurdity:  ESC.responder.absurdity(text),
-        offScript:  ESC.responder.offScript(text),
-        nonsense:   ESC.responder.isNonsense(text)
+        intent:    ESC.responder.classify(text),
+        grounding: ESC.responder.grounding(text.toLowerCase()),
+        nonsense:  ESC.responder.isNonsense(text)
       };
     },
 
+    /* Preview a scene's reply to a given register. */
+    reply: function (scene, intent) {
+      return ESC.responses.reply(scene, intent, 0);
+    },
+
     ledger:  function () { return ESC.state.ledger; },
-    report:  function () { return ESC.script.buildReport(); },
-    restart: function () { location.reload(); },
-    scenes:  ORDER
+    scenes:  function () { return playable(); },
+    restart: restart,
+    reload:  function () { location.reload(); }
   };
 
   /* ======================================================================
@@ -174,5 +177,5 @@ ESC.main = (function () {
     start();
   });
 
-  return { start: start, debug: debug, ORDER: ORDER };
+  return { start: start, restart: restart, debug: debug, ORDER: ORDER };
 })();

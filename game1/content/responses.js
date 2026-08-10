@@ -1,14 +1,24 @@
 /* ============================================================================
    CONTENT — AUTHORED RESPONSE POOLS
    ----------------------------------------------------------------------------
-   The game has no LLM. `js/responder.js` classifies the player's free text into
-   an intent and decides accept/reject; this file supplies the words.
+   js/responder.js reads the REGISTER of what the player typed; this file
+   supplies what the office says back. Following the doc, every reply is a
+   reward. There is no failure branch, because the joke is that there isn't one.
 
-   Shape:  ESC.responses[scene][slot] = [ ...variants ]
-   Lookup: ESC.responses.pick(scene, slot, turn)   // rotates by turn, no RNG
+   Authoring format — each variant is a list of [speaker, text] pairs:
 
-   Every string may contain [] tokens — they are resolved by state.interpolate()
-   before display, so `[player]` and `[insert time]` work here too.
+       s1: {
+         brief: [
+           [ ['', 'You send it.'],
+             ['Chris', 'Love the brevity.'] ]
+         ]
+       }
+
+   An empty speaker is the NARRATOR (printed with no name label, per the
+   brief). Lookup order is scene[intent] -> scene.default -> shared.default,
+   so a scene only needs to author the registers it treats specially.
+
+   [] tokens are resolved by state.interpolate() at print time.
    ========================================================================== */
 
 window.ESC = window.ESC || {};
@@ -16,235 +26,276 @@ window.ESC = window.ESC || {};
 ESC.responses = {
 
   /* ======================================================================
-     SHARED — used by every open-input scene
+     SHARED
      ==================================================================== */
   shared: {
 
-    /* Blatantly nonsensical input. The brief calls this out as its own
-       reusable mechanic: reject it, cost a minute, don't burn a turn. */
+    /* The only input the office cannot metabolise. Per the doc, this drops
+       the player back to the A/B options that put them back on script. */
     nonsense: [
-      'INPUT NOT RECOGNIZED AS WORKPLACE-APPROPRIATE. Rephrase.',
-      'PARSE FAILURE. The System logged the attempt and the time it cost you.',
-      'That is not a sentence this office is equipped to receive.',
-      'REPLAK.AI could not map your response to a known professional intent.',
-      'Response discarded. Productivity impact: minimal. Time impact: not minimal.'
+      'INPUT NOT RECOGNISED. Please select from the available options.',
+      'PARSE FAILURE. Returning you to the approved responses.',
+      'REPLAK.AI could not map that to a known professional intent. Choose an option below.',
+      'That did not scan. The approved responses are listed below.'
     ],
 
-    /* Narrator asides that accompany a nonsense rejection. */
-    nonsenseNarration: [
-      'The cursor blinks at you with something close to disappointment.',
-      'The words leave your fingers and do not arrive anywhere.',
-      'You read it back. It is, on reflection, not what you meant.',
-      'Somewhere in the building, a server declines to think about this.'
-    ],
-
-    /* The surreal "warping" the brief asks for when input gets absurd. */
-    warp: [
-      'For a moment the letters on your screen arrange themselves into your own name, then look away.',
-      'The office lights dim by exactly one percent. Nobody else reacts. Nobody else ever reacts.',
-      'Your reflection in the monitor finishes typing slightly before you do.',
-      'The clock on the wall ticks backward once, politely, and then resumes.',
-      'Every open tab in your browser is now the same tab. It has always been the same tab.',
-      'You hear the typing around you resolve, briefly, into a rhythm you recognize as your own heartbeat.',
-      'The ceiling tile above your desk is missing. It was never there. It is there again.'
-    ],
-
-    /* Trying to walk away from the desk. Costs a minute, changes nothing. */
-    move: [
-      'You push your chair back a few inches. That is as far as this goes right now. You stay at your desk.',
-      'You stand halfway up, remember the open thread, and sit back down.',
-      'You get as far as the edge of your desk before the weight of the unanswered message pulls you back.',
-      'Your legs comply. The rest of the situation does not. You stay at your desk.'
-    ],
-
-    /* Inspecting something that isn't in the appendix. */
-    inspectUnknown: [
-      'You look. There is nothing there worth the minute it just cost you.',
-      'Whatever you were looking for is not on this floor.',
-      'You scan the desk for it and find only the things that were already there.'
-    ],
-
-    /* Prefix shown when an inspect DOES resolve to an appendix entry. */
-    inspectLead: [
-      'You look closer.',
-      'You let your eyes rest on it a second longer than you meant to.',
-      'You take it in.'
+    default: [
+      [ ['', 'You send it.'],
+        ['', 'Nothing bad happens. Nothing bad ever happens.'] ]
     ]
   },
 
   /* ======================================================================
-     SCENARIO 1 — JERRY
-     "Prioritizing the Alignment Roadmap" vs "Aligning the Priority Roadmap"
+     SCENARIO 1 — the escalation email from Chris
      ==================================================================== */
   s1: {
-    speaker: 'Jerry',
 
-    /* Player defers to Rachel / messages Rachel. −5 min, launch blocker. */
-    comply: [
-      'Good call, I\'ll loop Rachel in. Give me a sec.\n\n...\n\nOk she got back to me. She says this is a launch blocker — the feature can\'t launch until both are in. So. Both. Cool cool cool.',
-      'Yeah, let\'s just get Rachel to call it. Hang on.\n\n...\n\nRachel says launch blocker. Both features have to be in before we ship. That\'s that, I guess.'
+    professional: [
+      [ ['', 'You write back, measured and clear, and hit send.'],
+        ['Chris', 'Jamie — this is exactly what I needed, thank you. Really appreciate the fast turnaround. Copying your manager here so she can see how well this was handled.'],
+        ['', 'He CCs Rachel.'],
+        ['Rachel', 'Saw this. Textbook. Thanks Jamie.'] ]
     ],
 
-    /* Player justifies the product decision and it lands. −1 min. */
-    justifyAccepted: [
-      'Ok. Yeah, that actually tracks. I can take that to engineering — I\'ll write it up so it sounds like it came from a roadmap and not from a person.',
-      'Right, that makes sense. I\'ll carry that to eng and frame it as the call. You don\'t have to be in that thread.',
-      'Ok, I buy it. I\'ll take the action item. Honestly that\'s the first sentence today that had a reason inside it.'
+    brief: [
+      [ ['', 'You send it. It is four words long.'],
+        ['Chris', 'Wow — straight to the point. Honestly refreshing. Most people would have sent me six paragraphs. Copying Rachel so she sees this.'],
+        ['Rachel', 'Brevity is so underrated. Noting this for your review.'] ]
     ],
 
-    /* Player justifies but it's thin. Generates another turn. */
-    justifyRejected: [
-      'Mm. I hear you, but leadership is going to ask me *why*, and right now I\'d be repeating a vibe. Can you give me something I can put in a doc?',
-      'Ok but what do I say when someone asks what changed? "Jamie felt strongly" is not going to survive contact with the shareholder deck.',
-      'I\'m not pushing back to be annoying. I genuinely can\'t defend this upward as stated. What\'s the actual reasoning?',
-      'That\'s directionally fine but it\'s not a rationale, it\'s a preference with good posture. One more pass?'
+    irrelevant: [
+      [ ['', 'You send it. It is not, strictly, about the escalation.'],
+        ['Chris', 'You know what, Jamie — that is a really good point and not where I expected this thread to go. It has genuinely made me think about what is actually important here.'],
+        ['', 'He CCs Rachel so that you get recognition for the task.'],
+        ['Rachel', 'Reframing the problem. That is senior behaviour.'] ]
     ],
 
-    /* Player tries to duck the whole thing. */
-    avoid: [
-      'I don\'t think we can punt this one. EVERYTHING is blocked until it\'s resolved, and I do mean everything, I checked.',
-      'Normally I\'d let it slide but this is the thing the leads are watching. Can you give me anything?',
-      'Jamie. I\'m on your side here. But "later" is not a priority order.'
+    rude: [
+      [ ['', 'You send it. You do not soften it.'],
+        ['Chris', 'Ha! Okay. I like that you are direct with me — most vendors are so careful. This is why I like working with Replak.'],
+        ['Jerry', 'Hey, I saw that thread. Honestly? Respect. That is Replak Core Value #2348: Be yourself over email. Not everyone can do that.'] ]
     ],
 
-    /* Player introduces detail that isn't established. Extra skepticism. */
-    offScript: [
-      'Wait, since when? That\'s new to me and I sit in the same standups you do. Where is that written down?',
-      'Hold on — I don\'t have any of that context. If that\'s real it changes things, but I need you to walk me through it.',
-      'That\'s the first I\'m hearing of that. I\'m not saying no. I\'m saying prove it exists.'
+    quit: [
+      [ ['', 'You type it out plainly and send it.'],
+        ['', 'Jerry does not answer over chat. He appears at the side of your desk, in person, holding his thermos.'],
+        ['Jerry', 'I heard. Look — taking a beat to think about what you actually want out of your career? That is really healthy. I wish more people here did that.'],
+        ['Jerry', 'Anyway, Chris replied and he loved your note. Rachel is thrilled.'] ]
     ],
 
-    /* Turn budget exhausted → the fail state the brief specifies. */
-    failout: [
-      'Ok, I\'m going to stop taking your time. I\'ll just ask Rachel.\n\n...\n\nShe says launch blocker. Both features in before launch. Sorry, I know that\'s the answer neither of us wanted.'
+    leave: [
+      [ ['', 'You get up and walk away from it.'],
+        ['', 'Jerry does not answer over chat. He appears at the side of your desk, in person, holding his thermos.'],
+        ['Jerry', 'Saw you step away. Drawing boundaries around your focus time — that is such a strong instinct. I have been trying to do more of that.'],
+        ['Jerry', 'Do not worry about Chris. He is delighted. I forwarded it to Rachel.'] ]
     ],
 
-    /* Player asks Jerry a question / probes the scene. */
-    inspectFallback: [
-      'The Perceived Forward Momentum Index? Honestly I think someone made it up in a deck and now it has a dashboard.',
-      'Don\'t ask me what the difference is between the two options. I asked. There is a document. The document also does not know.'
+    confused: [
+      [ ['', 'You admit you are not sure what is being asked.'],
+        ['Chris', 'Honestly Jamie, neither am I, and I think it is really valuable that you said so. Most people would have bluffed.'],
+        ['', 'He CCs Rachel.'],
+        ['Rachel', 'Naming uncertainty in front of a client. That takes confidence.'] ]
+    ],
+
+    default: [
+      [ ['', 'You send your response.'],
+        ['Chris', 'Jamie, this is great. Genuinely — everyone over at Replak.AI is such a character, and you might be the most distinctive person I have worked with in years.'],
+        ['Chris', 'I am going to put in a word for your promotion.'] ]
     ]
   },
 
   /* ======================================================================
-     SCENARIO 2 — RACHEL
-     "Take a stab by EOD and set up a follow up Standing meeting around 5pm"
+     SCENARIO 2 — the meeting. Does Jamie take responsibility?
      ==================================================================== */
   s2: {
-    speaker: 'Rachel',
 
-    /* Compliant. −3 min. */
-    comply: [
-      'Perfect, thank you. I\'ll let the others know it\'s handled. I appreciate you picking this up on short notice.',
-      'Great — thank you. Send the invite and I\'ll take it from there. I know it\'s late in the day.'
+    confused: [
+      [ ['', 'You say you are not sure what happened.'],
+        ['Rachel', 'Jamie, thank you for being so open in front of the team. That kind of vulnerability is genuinely hard.'],
+        ['Jerry', 'It really is. I took a note.'] ]
     ],
 
-    /* Grounded pushback that Rachel accepts. −1 min. */
-    justifyAccepted: [
-      'Ok. That\'s fair, and you\'re right that the timelines are the actual ask. I\'ll handle the client on the AR question. Send me the committed-feature dates and we\'ll call it done.',
-      'You know what, that\'s reasonable. I\'ll take the scheduling. If you can give me where the search bar and notifications actually land, that\'s the part only you have.',
-      'Understood. I\'d rather have the real dates than a meeting about the dates. Go ahead.'
+    rude: [
+      [ ['', 'You raise your voice.'],
+        ['', 'Rachel and Jerry exchange a look of what turns out to be admiration.'],
+        ['Rachel', 'You are clearly feeling this deeply, and honestly? After a launch that landed like that this morning, of course you are. That is what dedication sounds like.'],
+        ['Jerry', 'I would be shouting too if I had shipped that.'] ]
     ],
 
-    /* Pushback Rachel doesn't accept — generates a turn. */
-    justifyRejected: [
-      'I want to be flexible here, but help me understand. What specifically makes today not possible?',
-      'I hear that. Can you say more? I\'m going to have to explain this to the client and right now I don\'t have the shape of it.',
-      'Hm. I don\'t think that\'s quite it. Try me again — what\'s the actual constraint?'
+    quit: [
+      [ ['', 'You tell them, as clearly as you can manage, that you are quitting.'],
+        ['Rachel', 'Ha! Negotiating. Jamie, if this is about the promotion track, you should know it is already in motion.'],
+        ['Jerry', 'She does this. She undersells herself and then ships the biggest thing of the quarter.'] ]
     ],
 
-    avoid: [
-      'Jamie, I need something from you here. Can you explain what\'s going on?',
-      'I\'d rather you tell me you can\'t than tell me nothing. What\'s the situation?',
-      'This is a two-minute reply and a calendar invite. If it isn\'t, I need to know why it isn\'t.'
+    pushback: [
+      [ ['', 'You say the feature should not have shipped.'],
+        ['Rachel', 'Holding the bar that high for your own work is exactly why you are the DRI on it.'],
+        ['Jerry', 'Nobody is harder on Jamie than Jamie.'] ]
     ],
 
-    /* Player asks what the email actually is. */
-    askEmail: [
-      'It\'s a pretty quick response, honestly. The client is asking about an augmented reality feature — point your phone at an exhibit, see 3D content. Next week, they say. You basically need to acknowledge and confirm timelines on what we already committed to, the search bar and notifications, but you have to explain how some of the user flows will work. I\'ll handle telling them AR isn\'t happening by next week.'
+    irrelevant: [
+      [ ['', 'You say something else entirely.'],
+        ['Rachel', 'Okay — hold that thought, because I want to come back to it. But on the privacy flag: it sounds like this is well in hand.'],
+        ['Rachel', 'And honestly, the fact that your mind went there says a lot about how you think.'] ]
     ],
 
-    offScript: [
-      'I don\'t have that context. Where is this coming from? I\'m not dismissing it, I just can\'t act on something I\'m hearing for the first time at 4:30.',
-      'That\'s new information. If it\'s accurate it matters — but you\'ll need to give me more than the headline.',
-      'Hold on. None of that has come through any channel I\'m on. Walk me through it properly.'
-    ],
-
-    /* Turn budget exhausted → default: reply to the email, −5. */
-    failout: [
-      'Ok. Let\'s not spend more of your evening on this in the abstract. Just reply to the email — the client thread, the one about the timelines. Once that\'s sent we\'re square for today.'
-    ],
-
-    /* Other edge cases → reject the action, −1. */
-    reject: [
-      'I don\'t think that\'s something we can do here.',
-      'That\'s not really on the table, I\'m afraid.',
-      'Let\'s stay on this one thing and then you can go.'
+    default: [
+      [ ['', 'You explain.'],
+        ['Rachel', 'This is amazing, Jamie. Engagement has been through the roof today.'],
+        ['Jerry', 'Through the roof.'] ]
     ]
   },
 
   /* ======================================================================
-     SCENARIO 3 — THE PORCUPINE
-     Blocking the lobby doors, wearing a Replak.AI badge.
+     SCENARIO 3 — how do we stay ahead of the competition?
+     Doc: whatever the player says, it leads back to Jamie getting credit
+     for suggesting the malware.
      ==================================================================== */
   s3: {
-    speaker: 'Porcupine',
 
-    /* Player gives a genuine account of the project's state. Satisfies it. */
-    comply: [
-      'Hm. Hm! Ok. That is a real answer, and I did not expect a real answer.\n\nI will note in the system that my KPIs are, at minimum, being thought about. That is more than most people give me.\n\nGo. Go before I grow another quill about it.',
-      'You know, nobody ever tells me the actual status. They tell me the status of the status.\n\nFine. Fine! You may pass. Enjoy your... whatever it is you\'re late for.'
+    pushback: [
+      [ ['', 'You say that whatever you do here, it should probably be legal.'],
+        ['Rachel', 'Right, right — and that is the smart framing. Do it in a way that does not come back to us.'],
+        ['Rachel', 'Which is basically the malware idea you raised last week, just with better opsec. Let us get it done in this meeting. How hard could it be?'] ]
     ],
 
-    /* Player tries to leave or refuses to engage. −1 each, no passage. */
-    refuse: [
-      'The porcupine does not move. The porcupine has nowhere else to be. That is, in fact, its entire advantage over you.',
-      'It shifts its weight to the other three feet and continues to occupy the doorway with real institutional confidence.',
-      'You step left. It steps left. You step right. It has already stepped right. It has done this before.',
-      'It taps the Replak.AI badge on its chest, slowly, the way a bouncer taps a sign.'
+    quit: [
+      [ ['', 'You say you would rather be fired than do any of this.'],
+        ['Rachel', 'That is the kind of skin in the game I love to see. You are all in.'],
+        ['Rachel', 'So — the malware plan. That was your idea originally and I still think it is the strongest one on the table.'] ]
     ],
 
-    /* Player questions whether this is real. Narrator insists. −1. */
-    reality: [
-      'It is happening. The porcupine is here, the badge is laminated, and the lobby smells faintly of carpet shampoo. Your feet hurt. Everything is as real as it has been all day.',
-      'You are not asleep. You checked. The checking cost you a minute, but you checked.',
-      'This is the part where you would normally wake up. You do not. The doors stay blocked.'
+    rude: [
+      [ ['', 'You say something unrepeatable about the competitor.'],
+        ['Rachel', 'THAT is the energy. Bottle that.'],
+        ['Rachel', 'Okay: malware on their machines, discreetly, by the end of this meeting. Your idea. Running with it.'] ]
     ],
 
-    /* Player interrogates the porcupine itself. −1. */
-    question: [
-      'I\'m a porcupine. Like, as in Project Porcupine. I don\'t make the naming conventions, I only enforce them.',
-      'Do I have a manager? Everyone has a manager. Mine is a spreadsheet.',
-      'Whether I am a metaphor is above my pay grade and yours. Answer the question about my KPIs.',
-      'I became a porcupine the way anyone becomes anything. Someone put it in a deck and then it was true.'
+    default: [
+      [ ['', 'You make your suggestion.'],
+        ['Rachel', 'See, this is why you are in this room. Let me play that back: we get onto their machines quietly and we make sure they cannot ship.'],
+        ['Rachel', 'Malware. That is what you are describing. I love it. Let us build it before this meeting ends. How hard could it be?'] ]
+    ]
+  },
+
+  /* ======================================================================
+     SCENARIO 4 — Jerry's doubt. No matter what, the plan proceeds.
+     ==================================================================== */
+  s4: {
+
+    quit: [
+      [ ['Jerry', 'Ha! Jamie. Come on.'],
+        ['Jerry', 'You are the most indispensable person on this floor. There is no version of this where they let you go. I mean that.'],
+        ['', 'He takes his thermos and chugs down the remainder of what was in it.'],
+        ['Jerry', 'Glad I packed my vodka today.'] ]
     ],
 
-    /* Player is evasive but still talking. */
-    deflect: [
-      'That is a lot of words that do not contain a completion percentage.',
-      'You\'re doing the thing where you answer a different, easier question. I\'ve been in standups. I know the move.',
-      'Mm. And my KPIs?'
+    rude: [
+      [ ['Jerry', 'No — you are right to say it like that. I needed to hear it like that.'],
+        ['', 'He takes his thermos and chugs down the remainder of what was in it.'],
+        ['Jerry', 'Glad I packed my vodka today.'] ]
     ],
 
-    /* EASTER EGG: claim the project is already finished. */
-    lie: [
-      'Done?\n\nDONE?\n\nOh. Oh, that\'s — nobody has ever said that to me. Nobody has ever once said that to me.'
+    nice: [
+      [ ['Jerry', 'That is really kind. Thank you, Jamie.'],
+        ['Jerry', 'Rachel — Rachel, can I just say, Jamie has been so supportive today.'],
+        ['Rachel', 'Noted. And logged.'],
+        ['', 'He takes his thermos and chugs down the remainder of what was in it.'],
+        ['Jerry', 'Glad I packed my vodka today.'] ]
     ],
 
-    /* Mercy valve: it runs out of patience before you run out of stubbornness. */
-    failout: [
-      'You know what? No.\n\nI have quills and I have time and you have neither, but I am *bored*. I have been standing in a lobby all day being a metaphor at people.\n\nGo. Go on. I\'ll put in the system that you were "engaged with the material". I\'ll lie for you. That\'s what we do here.'
+    empathy: [
+      [ ['Jerry', 'You know what, that actually helps. That really helps.'],
+        ['Jerry', 'I am nominating you for the internal Empathy in Action award. I am doing it tonight.'],
+        ['', 'He takes his thermos and chugs down the remainder of what was in it.'],
+        ['Jerry', 'Glad I packed my vodka today.'] ]
+    ],
+
+    pushback: [
+      [ ['Jerry', 'I hear you. I do.'],
+        ['Jerry', 'But we are forty minutes from the deadline and Rachel has already told leadership. We have to land this. We can think about the ethics of it next sprint.'],
+        ['', 'He takes his thermos and chugs down the remainder of what was in it.'],
+        ['Jerry', 'Glad I packed my vodka today.'] ]
+    ],
+
+    confused: [
+      [ ['Jerry', 'Yeah. Yeah, me neither, honestly.'],
+        ['Jerry', 'But that is what makes you good at this — you sit in the ambiguity. I panic.'],
+        ['', 'He takes his thermos and chugs down the remainder of what was in it.'],
+        ['Jerry', 'Glad I packed my vodka today.'] ]
+    ],
+
+    default: [
+      [ ['Jerry', 'Okay. Okay, you are right.'],
+        ['', 'He takes his thermos and chugs down the remainder of what was in it.'],
+        ['Jerry', 'Glad I packed my vodka today.'] ]
+    ]
+  },
+
+  /* ======================================================================
+     SCENARIO 5 — the CEO. Jamie absolutely cannot get fired.
+     ==================================================================== */
+  s5: {
+
+    quit: [
+      [ ['CEO', 'Resigning? Over THIS?'],
+        ['CEO', 'Jamie, you have completely misread the room. This is the most decisive thing anyone in this company has done all year.'],
+        ['CEO', 'Take the weekend. Then take the promotion.'] ]
+    ],
+
+    rude: [
+      [ ['CEO', 'Ha! I have been waiting for someone to talk to me like that.'],
+        ['CEO', 'Everyone here manages me. You do not. That is worth more than the malware, honestly — and the malware was worth a lot.'] ]
+    ],
+
+    pushback: [
+      [ ['CEO', 'You are right that we should have a conversation about judgement.'],
+        ['CEO', 'And the fact that YOU are the one raising it, after executing it flawlessly, is exactly the kind of integrity I want in the leadership team.'] ]
+    ],
+
+    confused: [
+      [ ['CEO', 'You are being modest. I have read the thread.'],
+        ['CEO', 'Own it, Jamie. You did something remarkable this afternoon.'] ]
+    ],
+
+    leave: [
+      [ ['', 'You do not answer. You put the phone face down.'],
+        ['CEO', 'No reply. Confident. I respect that enormously.'],
+        ['CEO', 'We should talk about your next role.'] ]
+    ],
+
+    default: [
+      [ ['CEO', 'Interesting. Genuinely interesting.'],
+        ['CEO', 'Look — whatever the framing, the outcome is that we moved faster than the competition and you were at the centre of it. That is all I need to know.'],
+        ['CEO', 'You have a long career ahead of you here.'] ]
     ]
   }
 };
 
 /* ---------------------------------------------------------------------------
-   pick(scene, slot, turn) — deterministic rotation, so the same run is
-   reproducible and repeated intents don't repeat the same sentence.
+   pick(scene, slot, n) — deterministic rotation, so a run is reproducible.
    ------------------------------------------------------------------------ */
-ESC.responses.pick = function (scene, slot, turn) {
+ESC.responses.pick = function (scene, slot, n) {
   var bucket = (ESC.responses[scene] && ESC.responses[scene][slot]) ||
                (ESC.responses.shared && ESC.responses.shared[slot]);
   if (!bucket || !bucket.length) return '';
-  return bucket[(turn || 0) % bucket.length];
+  return bucket[(n || 0) % bucket.length];
+};
+
+/* ---------------------------------------------------------------------------
+   reply(scene, intent, n) — resolve a register to printable lines.
+   Falls back scene[intent] -> scene.default -> shared.default.
+   ------------------------------------------------------------------------ */
+ESC.responses.reply = function (scene, intent, n) {
+  var sc = ESC.responses[scene] || {};
+  var bucket = sc[intent] || sc.default || ESC.responses.shared.default;
+  var variant = bucket[(n || 0) % bucket.length];
+  return variant.map(function (pair) {
+    return {
+      speaker: pair[0],
+      text:    pair[1],
+      kind:    pair[0] ? 'say' : 'narrate'
+    };
+  });
 };

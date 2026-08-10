@@ -298,10 +298,11 @@ ESC.fx = (function () {
 
     /* -- the strange parts --------------------------------------------- */
 
-    portal: function () {
-      tone({ freq: 70, to: 900, dur: 1.1, type: 'sawtooth', gain: 0.16, filter: 1400 });
-      noise({ dur: 0.9, freq: 700, q: 0.4, gain: 0.12, delay: 0.1 });
-      return ESC.ui ? ESC.ui.warp(3) : sleep(1200);
+    /* The office metabolising something awful into praise. */
+    absorb: function () {
+      tone({ freq: 660, dur: 0.10, type: 'sine', gain: 0.10 });
+      tone({ freq: 880, dur: 0.16, type: 'sine', gain: 0.09, delay: 0.10 });
+      return sleep(200);
     },
 
     staticFlip: function () {

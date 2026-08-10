@@ -1,19 +1,25 @@
 /* ============================================================================
    CONTENT — THE SCRIPT
    ----------------------------------------------------------------------------
-   Transcribed from brainstorm.pdf. This file is data: every scene is an array
-   of beats that js/engine.js knows how to perform.
+   FIRE(ESC)APE, transcribed from brainstorm.pdf (Aug 9 2026 revision).
+   This file is data: every scene is an array of beats js/engine.js performs.
 
-   Beat types available (see engine.handlers):
-     narrate | say | system | fx | marker | art | popup | wait | gauges
-     cost | clockTo | typeExact | choose | openInput | call | branch
+   Beat types (see engine.handlers):
+     narrate | say | system | fx | marker | art | popup | wait
+     locate | freshScreen | continue | email | chat | restart | chrome
+     typeExact | choose | openInput | call | branch
 
    Conventions from the brief, preserved here:
      * Indented script text  -> narrate / say / system  (typed into the terminal)
-     * Un-indented direction -> fx    (SET DESIGN: the player sees and hears it
-       happen; it is never printed as prose. Effects live in js/fx.js.)
+     * Un-indented direction -> fx / locate / freshScreen  (SET DESIGN: the
+       player sees and hears it happen; it is never printed as prose)
      * NARRATOR lines carry no speaker; the terminal IS the narrator.
      * [] tokens are resolved by state.interpolate() at print time.
+
+   THE PREMISE: Jamie wants to get fired. She cannot. Every choice, including
+   the deliberately awful ones, is metabolised by the office into praise. The
+   two SUDDEN DEATH branches are the model-employee answers — picking one ends
+   the run early, because here, being a good employee is how you lose.
    ========================================================================== */
 
 window.ESC = window.ESC || {};
@@ -96,8 +102,7 @@ ESC.script = (function () {
             vf.classList.add('snap-flash');
             ESC.fx.play('shutter');
             status.textContent = 'CAPTURED';
-            var seed = ESC.state.ledger.name + '|' + ESC.state.ledger.cameraConsent;
-            ui.setPortrait(ui.makePortrait(seed));
+            ui.setPortrait(ui.makePortrait(ESC.state.ledger.name + '|cam'));
             return ui.sleep(900);
           });
       })
@@ -130,474 +135,676 @@ ESC.script = (function () {
   };
 
   /* ======================================================================
-     OPENING
+     TUTORIAL — 4:00PM, Your Desk
      ==================================================================== */
 
-  S.opening = [
+  S.tutorial = [
+    { type: 'locate', time: '4:00PM', location: 'Your Desk, Second Floor' },
+    { type: 'chrome' },
     { type: 'fx', name: 'typingStart' },
 
+    { type: 'narrate', text: 'It\'s another Thursday in the Replak.ai office.' },
     { type: 'narrate', text:
-      'It\'s Thursday, 3:50pm. You\'re typing away at your desk writing the ' +
-      'latest objective key results for Project Porcupine and your words per ' +
-      'minute is slowing noticeably.' },
-
+      'You\'ve already spent 50 hours at the office this week. You got into ' +
+      'the office at 8:00AM today and you were the last one in.' },
     { type: 'narrate', text:
-      'You have already worked 50 hours this week, have stayed late in the ' +
-      'office every single day this past week for a shareholder meeting ' +
-      'preparation that is happening tomorrow.' },
-
-    { type: 'narrate', text:
-      'You sense the quiet tension that is perpetrating the office. Everyone ' +
+      'Project Porcupine is going sideways. Heck, the company is going ' +
+      'sideways. You sense the quiet tension permeating the office. Everyone ' +
       'else is silently, but furiously typing around you.' },
 
     { type: 'fx', name: 'typingIntensify' },
 
     { type: 'narrate', text:
-      'But you must exit The System at 5:00pm today. You promised Parker, and ' +
-      'you can\'t let Parker down this time.' },
+      'You really can\'t keep doing this. Today has to be the day — there is ' +
+      'just a sense in the air, something\'s going to happen.' },
+    { type: 'narrate', text:
+      'You know you can\'t quit out of the blue though, there needs to be a ' +
+      'compelling reason why.' },
 
     { type: 'wait', ms: 700 },
+    { type: 'narrate', text: 'You are going to get fired.', speed: 42 },
+    { type: 'narrate', text: 'It can\'t be that hard.', speed: 34 },
+    { type: 'wait', ms: 600 },
 
-    { type: 'narrate', text:
-      'You\'re furiously copying boxes of excel spreadsheets and pasting ' +
-      'circles into the power point, preparing for the meeting.' },
+    { type: 'narrate', text: 'You decide to take a break to clear your head.' },
+    { type: 'narrate', text: 'You think to yourself \'Maybe I need some coffee\'.' },
 
-    /* ---- the box counting -----------------------------------------------
-       The boxes appear on screen and are countable; the narration below
-       counts along with them, and one of them quietly disappears. */
-    { type: 'fx', name: 'countBoxes', await: false, wait: 500 },
-
-    { type: 'narrate', text: 'One… two… three… you count the boxes that appear.' },
-    { type: 'narrate', text: 'Twenty seven… Twenty nine…' },
-    { type: 'narrate', text: 'Wait, what did you miss a number?', speed: 34 },
-
-    { type: 'cost', hp: 6 },
-
-    { type: 'narrate', text:
-      'You feel your concentration level dropping actively. Instinctively, ' +
-      'you reach for your side drawer to grab a little snack…' },
-    { type: 'narrate', text: 'It\'s empty.' },
-    { type: 'narrate', text: 'Instead you reach for your mug of coffee…' },
-    { type: 'narrate', text: 'It\'s also empty.' },
-    { type: 'narrate', text:
-      'There\'s water and snacks at the PHS (Productivity Hydration Station).' },
-
-    { type: 'wait', ms: 600 }
-  ];
-
-  /* ======================================================================
-     TUTORIAL
-     ==================================================================== */
-
-  S.tutorial = [
-
-    { type: 'typeExact',
-      text: 'Go to PHS to get snacks and coffee.',
-      hpPerTypo: 1 },
-
-    { type: 'fx', name: 'warning' },
-
-    { type: 'popup', title: 'REPLAK.AI SYSTEM — WARNING', text:
-      'WARNING: You just got back from a long break.\n\n' +
-      'Why are you trying to leave the desk again?' },
-
-    { type: 'narrate', text:
-      'Do you have time for this? You need to finish clicking yes and no for ' +
-      'the evals that you were doing.' },
+    /* "Question appears at the bottom of the screen (separated from the
+        narration)" */
+    { type: 'narrate', text: '\nWhere should you get your coffee?' },
 
     { type: 'choose', options: [
       {
         key: 'A',
-        label: 'Ok, fine. I\'ll keep working.',
-        minutes: 0,
-        hp: 10,                                  /* energy dwindling low */
-        record: { breakTaken: false },
+        label: 'Go to the PHS (Productivity Hydration Station) and make your own coffee',
+        record: { coffee: 'made' },
+        locate: ['4:01PM', 'The Office Kitchen, Second Floor'],
         then: [
-          { type: 'narrate', text:
-            'Great. That saved you 5 minutes, but your energy is dwindling ' +
-            'low. Let\'s keep preparing for the Standup standup meeting ' +
-            'that\'s about to start.' }
+          { type: 'freshScreen' },
+          { type: 'narrate', text: 'You walk to PHS. Your coworker Jerry notices.' },
+          { type: 'say', speaker: 'Jerry', text:
+            'I bet you\'re getting coffee to stay as efficient and effective ' +
+            'as you always are, [player]! That\'s what I like about you. By ' +
+            'the way, I put in a good word for your promotion!' }
         ]
       },
       {
         key: 'B',
-        label: 'No, I\'m having a difficult time concentrating. Taking this break will help me be more productive.',
-        minutes: 5,
-        heal: 22,
-        record: { breakTaken: true },
+        label: 'Steal your coworker Jerry\'s drink',
+        record: { coffee: 'stole' },
+        locate: ['4:01PM', 'Jerry\'s Desk, Second Floor'],
         then: [
+          { type: 'freshScreen' },
           { type: 'narrate', text:
-            'Alright, that\'s a good point. You get up with your water bottle ' +
-            'and walk over to the Productivity Hydration Station™. It takes a ' +
-            'while to fill up your 40 ounce bottle.' },
-          { type: 'narrate', text:
-            'You take a sip hoping the coffee will wash away your fatigue. It ' +
-            'doesn\'t. You sip and walk to your desk and check the time. It\'s ' +
-            'now 3:55pm. The Standup standup meeting\'s about to start.' }
+            'You head over to Jerry\'s desk. He\'s gone. You spot his thermos ' +
+            'he\'s been sipping out of all day. You take a sip, and it\'s bad. ' +
+            'Is this even coffee? You quietly put it back on his desk.' },
+          { type: 'narrate', text: 'Guess you have to make your own coffee.' },
+          { type: 'narrate', text: 'You walk over to PHS.' }
         ]
       }
     ]},
 
-    { type: 'call', fn: function () { ESC.ui.renderIdPanel(); } },
+    { type: 'continue' },
+    { type: 'freshScreen' },
 
-    /* The gauges arrive here, per the brief. */
-    { type: 'fx', name: 'gaugesArrive' },
-    { type: 'gauges' },
+    /* ---- the kitchen -------------------------------------------------- */
+    { type: 'locate', time: '4:05PM', location: 'Office Kitchen, Second Floor' },
 
-    { type: 'wait', ms: 500 }
+    { type: 'narrate', text: 'You spot your manager, Rachel, in the kitchen.' },
+    { type: 'narrate', text: 'Why is she in the kitchen?' },
+    { type: 'narrate', text:
+      'She\'s hovering over a handful of whiteboard markers, a few notebooks, ' +
+      'and some sticky notes. She obviously just finished running a brainstorm ' +
+      'meeting and then made a fresh cup of coffee.' },
+
+    { type: 'say', speaker: 'Rachel', text: 'Hey [player]. How\'s it going?' },
+
+    { type: 'narrate', text: 'You talk about the weather.' },
+    { type: 'narrate', text:
+      'Rachel continues chatting while the coffee machine cranks out your ' +
+      'quadruple shot cappuccino with protein milk. Her older child\'s soccer ' +
+      'season is coming up. Her younger child is about to start learning ' +
+      'Spanish in pre-preschool.' },
+    { type: 'narrate', text: 'The machine beeps. Your coffee is ready.' },
+    { type: 'narrate', text:
+      'You and Rachel start to head back to your desks. As Rachel gathers the ' +
+      'brainstorm materials, she realizes she can\'t hold all of her materials ' +
+      'and her coffee mug at the same time.' },
+
+    { type: 'say', speaker: 'Rachel', text:
+      'Shoot, [player], would you mind helping me bring my coffee back to my desk?' },
+
+    { type: 'narrate', text:
+      'You glance down. All you\'re holding is the mug of coffee you just brewed.' },
+    { type: 'narrate', text: 'Rachel looks at you expectantly.' },
+
+    { type: 'choose', options: [
+      {
+        key: 'A',
+        label: 'Oh, sure.',
+        record: { carriedCoffee: 'yes' },
+        suddenDeath: 'coffee',
+        then: [
+          { type: 'freshScreen' },
+          { type: 'say', speaker: 'Rachel', text:
+            'Thanks, [player]! This was all I needed to see from you. This was ' +
+            'the only Replak Core Value (RCV) that you hadn\'t exemplified ' +
+            'within the last 90 days: We carry each other\'s coffee. ' +
+            'Congratulations on your promotion to Senior Product Manager.' }
+        ]
+      },
+      {
+        key: 'B',
+        label: 'Sorry, no.',
+        record: { carriedCoffee: 'no' },
+        then: [
+          { type: 'freshScreen' },
+          { type: 'say', speaker: 'Rachel', text:
+            'Oh okay, that\'s understandable. I appreciate you letting me know.' },
+          { type: 'narrate', text:
+            'You walk back with Rachel, who spills her coffee all over the ' +
+            'floor just before reaching her desk.' }
+        ]
+      },
+      {
+        key: 'C',
+        label: 'I wish I could.',
+        record: { carriedCoffee: 'wish' },
+        then: [
+          { type: 'freshScreen' },
+          { type: 'narrate', text: 'Rachel blinks, but quickly regains her composure.' },
+          { type: 'say', speaker: 'Rachel', text: 'Oh. I guess I wish you could too!' },
+          { type: 'narrate', text:
+            'You walk back with Rachel, who spills her coffee all over the ' +
+            'floor just before reaching her desk.' }
+        ]
+      }
+    ]},
+
+    { type: 'continue' }
   ];
 
   /* ======================================================================
-     SCENARIO 1 — JERRY
+     SCENARIO 0 — leadership leads want ROI (meeting)
+     ----------------------------------------------------------------------
+     NOT YET WRITTEN. brainstorm.pdf p7 carries only the heading:
+         "SCENARIO 0 BEGINS - leadership leads want ROI (meeting)"
+         "Meeting where (put into top narrative)"
+     Add beats to this array when the scene exists — main.js already sequences
+     it and skips it while empty, so nothing else needs to change.
+     ==================================================================== */
+
+  S.scenario0 = [];
+
+  /* ======================================================================
+     SCENARIO 1 — the escalation email
      ==================================================================== */
 
   S.scenario1 = [
-    { type: 'fx', name: 'sceneBreak' },
-
+    { type: 'freshScreen' },
+    { type: 'locate', time: '4:27PM', location: 'Your Desk, Second Floor' },
     { type: 'fx', name: 'slackPing' },
 
-    { type: 'say', speaker: 'Jerry', text:
-      'Hey [player]. The leads saw the Perceived Forward Momentum Index of ' +
-      'Project Porcupine is declining and are concerned on unclear ' +
-      'stakeholder ROI for the upcoming shareholders meeting.' },
-
-    { type: 'say', speaker: 'Jerry', text:
-      'We need to align on the H2 strategy for Project Porcupine. We need to ' +
-      'decide before [insert good time] which priority is higher priority:' },
+    { type: 'narrate', text:
+      'You check your calendar and you have a 30-minute sync meeting with ' +
+      'Rachel and Jerry that starts in a few minutes.' },
+    { type: 'narrate', text:
+      'Just as you\'re about to use the bathroom before your meeting, you ' +
+      'receive a chat message from Jerry.' },
 
     { type: 'say', speaker: 'Jerry', text:
-      '  1. Prioritizing the Alignment Roadmap   or\n' +
-      '  2. Aligning the Priority Roadmap.' },
+      'hey [player]. Going to cc you on an email thread with one of my ' +
+      'customers because I think you have more context. Could you respond ' +
+      'before our sync? It\'s urgent. Thanks!' },
 
-    { type: 'say', speaker: 'Jerry', text:
-      'EVERYTHING is blocked until this is resolved.' },
+    { type: 'narrate', text: 'You open the email.' },
 
-    { type: 'wait', ms: 500 },
+    { type: 'email',
+      from: 'chris@clientcustomercompanyai.com',
+      subject: '[Escalation] Did Replak.AI introduce a bug into its product this morning?',
+      body:
+        'Hi Jerry,\n\n' +
+        'Did you release a new feature recently?\n\n' +
+        'We got a flag that employees feel like their privacy is being\n' +
+        'breached. Is there a known issue on your end? Please let me know ASAP.\n\n' +
+        'Thanks,\n' +
+        'Chris' },
 
     { type: 'narrate', text:
-      'This catches you off-guard. What is he talking about?' },
-    { type: 'narrate', text:
-      'Then you remember, you were supposed to do this task but had forgotten ' +
-      'all about it. Maybe Rachel can do this instead.' },
-    { type: 'narrate', text:
-      'You swivel backward to ask, but Rachel is gone. Where is she?' },
-    { type: 'narrate', text:
-      'You check your phone. There\'s a new notification. Parker is wondering ' +
-      'how you\'re doing on time.' },
+      'This is definitely referencing a feature that you launched this morning.' },
 
-    { type: 'openInput', scene: 's1',
-      hint: 'answer Jerry — or look around, or try to leave. everything costs time.' },
+    { type: 'narrate', text: '\n> What do you do?' },
+
+    { type: 'choose', options: [
+      {
+        key: 'A',
+        label: 'Walk away from the desk and pretend you didn\'t see the message or the email.',
+        record: { emailChoice: 'ignored' },
+        then: [
+          { type: 'freshScreen' },
+          { type: 'narrate', text:
+            'You walk away and pretend you didn\'t see anything. As you walk ' +
+            'to the bathroom, you pass by Jerry, who waves at you and smiles.' },
+          { type: 'say', speaker: 'Jerry', text:
+            'Hey, I saw the read receipt on my chat message to you. I\'m ' +
+            'guessing you read the email I forwarded too. I think that\'s ' +
+            'really smart of you to not respond too quickly so that you can ' +
+            'draw protective boundaries around your work and time. I learn so ' +
+            'much from you!' },
+          { type: 'narrate', text: 'You\'re getting close to the end of the work day…' }
+        ]
+      },
+      {
+        key: 'B',
+        label: 'Blame Jerry.',
+        record: { emailChoice: 'blamed' },
+        then: [
+          { type: 'freshScreen' },
+          { type: 'narrate', text:
+            'You respond to the email by saying that this is Jerry\'s fault ' +
+            'and ask to be removed from the email thread.' },
+          { type: 'narrate', text: 'You receive another message from Jerry.' },
+          { type: 'say', speaker: 'Jerry', text:
+            'Hey, that last email from you…thank you for giving me an ' +
+            'opportunity to step up with a customer. I can demonstrate that ' +
+            'just in time for this upcoming promotion cycle. Thanks [player]!' },
+          { type: 'narrate', text: 'You\'re doing great at Replak.ai.' }
+        ]
+      },
+      {
+        key: 'C',
+        label: 'Write your own reply.',
+        record: { emailChoice: 'open' },
+        then: [
+          { type: 'narrate', text: '\nYou start typing.' },
+          { type: 'openInput', scene: 's1',
+            hint: 'write whatever you like — it will not go badly for you',
+            fallback: [
+              { key: 'A', label: 'Walk away and pretend you didn\'t see it.',
+                record: { emailChoice: 'ignored' },
+                then: [
+                  { type: 'say', speaker: 'Jerry', text:
+                    'Saw the read receipt. Drawing protective boundaries ' +
+                    'around your focus time — I learn so much from you!' }
+                ] },
+              { key: 'B', label: 'Blame Jerry.',
+                record: { emailChoice: 'blamed' },
+                then: [
+                  { type: 'say', speaker: 'Jerry', text:
+                    'Thank you for giving me an opportunity to step up with a ' +
+                    'customer. Thanks [player]!' }
+                ] }
+            ] }
+        ]
+      }
+    ]},
+
+    { type: 'continue' }
   ];
 
   /* ======================================================================
-     THE STANDING STANDUP — bridges scenario 1 and 2
-     ==================================================================== */
-
-  S.standup = [
-    { type: 'narrate', text:
-      'You glance at the clock, it now reads [insert time]. It\'s time for the ' +
-      'Standing Standup meeting. This is a daily meeting where everyone has to ' +
-      'recite their percentage progress towards the tasks that they are the ' +
-      'DRIs for.' },
-
-    { type: 'cost', hp: 5 },
-
-    { type: 'narrate', text:
-      'The meeting goes as well as it could — Jerry presented on the decision ' +
-      'to prioritize [insert prioritization that was decided during scenario 1].' },
-
-    { type: 'narrate', text:
-      'But it seems that other teammates have an issue on what are the issues ' +
-      'that we\'re [aligning/prioritizing] on. They also have a problem about ' +
-      'the high investment into the personalized AI system that Porcupine has ' +
-      'not yet been able to materialize into tangible ROI.' },
-
-    /* The script's fixed anchors. advanceTo never moves the clock backward,
-       so a player who already burned past 4:28 keeps their own worse time. */
-    { type: 'clockTo', hour: 16, minute: 28 },
-
-    { type: 'narrate', text:
-      'You glance at the clock, it now reads [insert time]. You will need to ' +
-      'head out soon. Decisions are being actively fought against and as the ' +
-      'clock hits 4:30pm, Rachel takes charge.' },
-
-    { type: 'clockTo', hour: 16, minute: 30 }
-  ];
-
-  /* ======================================================================
-     SCENARIO 2 — RACHEL
+     SCENARIO 2 — does Jamie take responsibility, or blame others?
      ==================================================================== */
 
   S.scenario2 = [
-    { type: 'fx', name: 'sceneBreak' },
+    { type: 'freshScreen' },
+    { type: 'locate', time: '4:31PM', location: 'Meeting Room #024, Second Floor' },
+
+    { type: 'narrate', text:
+      'You enter the meeting room. Rachel and Jerry are already there. It\'s a ' +
+      'team meeting: you and Jerry both report to Rachel.' },
 
     { type: 'say', speaker: 'Rachel', text:
-      'It seems the next steps are not clear. The item that we said we\'ll ' +
-      'take offline, I think we need to circle back on it. We really need a ' +
-      'follow up to align on when to discuss starting the roadmap towards ' +
-      'finalizing the prioritization plans.' },
+      'Jerry just forwarded me an email from Chris. Sounds like some privacy ' +
+      'flag? Information leakage? What is going on?' },
 
-    { type: 'say', speaker: 'Rachel', text:
-      'Hey [player], sorry that this is so urgent, can you take a stab by EOD ' +
-      'today and set up a follow up Standing meeting around 5pm?' },
+    { type: 'narrate', text:
+      'This is related to the feature you launched this morning.' },
 
-    { type: 'openInput', scene: 's2',
-      hint: 'answer Rachel — you can also ask her about the email.' },
+    { type: 'choose', options: [
+      {
+        key: 'A',
+        label: 'This is related to the feature I launched this morning.',
+        record: { blameChoice: 'owned' },
+        suddenDeath: 'ownedIt',
+        then: [
+          { type: 'freshScreen' },
+          { type: 'say', speaker: '[player]', text:
+            'Yeah, this is the feature I launched this morning. It screenshots ' +
+            'the employee\'s computer screen and a random conversation from ' +
+            'their personal phone every 30 seconds and sends it to their ' +
+            'manager over work chat.' },
+          { type: 'say', speaker: 'Rachel', text:
+            'That\'s amazing! No wonder engagement has been through the roof ' +
+            'today. That\'s definitely worthy of getting a Replak Core Value ' +
+            'named after you. How about this: Be like [player]. I think we ' +
+            'should file a patent!' }
+        ]
+      },
+      {
+        key: 'B',
+        label: 'It was Jerry\'s idea.',
+        record: { blameChoice: 'blamedJerry' },
+        then: [
+          { type: 'freshScreen' },
+          { type: 'say', speaker: '[player]', text:
+            'Yeah, this is the feature I launched this morning. It screenshots ' +
+            'the employee\'s computer screen and a random conversation from ' +
+            'their personal phone every 30 seconds and sends it to their ' +
+            'manager over work chat.' },
+          { type: 'say', speaker: '[player]', text: 'It was Jerry\'s idea.' },
+          { type: 'say', speaker: 'Jerry', text: 'What?' },
+          { type: 'say', speaker: 'Rachel', text:
+            '[player], this feature is amazing! Engagement has been through ' +
+            'the roof today. And it really shows what a great teammate and ' +
+            'collaborator you are that you\'re recognizing Jerry\'s ' +
+            'contributions.' },
+          { type: 'say', speaker: 'Jerry', text: 'Thank you, [player]!' }
+        ]
+      },
+      {
+        key: 'C',
+        label: 'Say something else.',
+        record: { blameChoice: 'open' },
+        then: [
+          { type: 'narrate', text: '\nRachel waits.' },
+          { type: 'openInput', scene: 's2',
+            hint: 'say anything at all',
+            fallback: [
+              { key: 'A', label: 'This is related to the feature I launched this morning.',
+                record: { blameChoice: 'owned' },
+                suddenDeath: 'ownedIt',
+                then: [
+                  { type: 'say', speaker: 'Rachel', text:
+                    'That\'s amazing! Worthy of a Replak Core Value named ' +
+                    'after you. Be like [player]. I think we should file a patent!' }
+                ] },
+              { key: 'B', label: 'It was Jerry\'s idea.',
+                record: { blameChoice: 'blamedJerry' },
+                then: [
+                  { type: 'say', speaker: 'Jerry', text: 'What?' },
+                  { type: 'say', speaker: 'Rachel', text:
+                    'It really shows what a great collaborator you are that ' +
+                    'you\'re recognizing Jerry\'s contributions.' }
+                ] }
+            ] }
+        ]
+      }
+    ]},
+
+    { type: 'continue' }
   ];
 
   /* ======================================================================
-     SCENARIO 3 — THE PORCUPINE
+     SCENARIO 3 — keeping ahead of the competition
+     Every road leads to the malware. That is the point.
      ==================================================================== */
 
   S.scenario3 = [
-    { type: 'fx', name: 'sceneBreak' },
+    { type: 'freshScreen' },
+    { type: 'locate', time: '4:35PM', location: 'Meeting Room #024, Second Floor' },
 
     { type: 'narrate', text:
-      'You make a beeline for the elevator. After what feels like a lifetime, ' +
-      'the elevator finally arrives. You enter and press the button for the ' +
-      'lobby floor.' },
+      'Rachel pulls up a social media post saying that Replak.ai\'s main ' +
+      'competitor is copying the new screenshot feature. That was fast.' },
 
-    { type: 'cost', minutes: 2 },
+    { type: 'say', speaker: 'Rachel', text:
+      'Look, we need to show Replak.ai leadership that we\'re on top of this. ' +
+      'How do we keep ahead of the competition no matter what?' },
+
+    { type: 'narrate', text: '\nWhat do you suggest to Rachel?' },
+
+    { type: 'choose', options: [
+      {
+        key: 'A',
+        label: 'Install malware on their computers.',
+        record: { sabotage: 'malware' },
+        then: [
+          { type: 'say', speaker: 'Rachel', text:
+            'I think this can make sense as long as it\'s done discreetly. We ' +
+            'just need a good \'way out\'. Wow this is so exciting this feels ' +
+            'like a true white collar crime. Let\'s spend the rest of this ' +
+            'meeting on building the malware. How hard could it be?' }
+        ]
+      },
+      {
+        key: 'B',
+        label: 'Break and enter their offices and destroy their computers.',
+        record: { sabotage: 'breakIn' },
+        then: [
+          { type: 'say', speaker: 'Rachel', text:
+            'I like it, but I think it might be hard to pull off.' },
+          { type: 'say', speaker: 'Rachel', text:
+            'Didn\'t you suggest we install malware on their computers last ' +
+            'week? Let\'s go with that. I think that could be good. Let\'s get ' +
+            'it done by the end of this meeting. How hard could it be?' }
+        ]
+      },
+      {
+        key: 'C',
+        label: 'Suggest something else.',
+        record: { sabotage: 'open' },
+        then: [
+          { type: 'narrate', text: '\nRachel leans forward.' },
+          { type: 'openInput', scene: 's3',
+            hint: 'suggest anything — it will become the malware',
+            fallback: [
+              { key: 'A', label: 'Install malware on their computers.',
+                record: { sabotage: 'malware' },
+                then: [
+                  { type: 'say', speaker: 'Rachel', text:
+                    'Discreetly, though. This feels like a true white collar ' +
+                    'crime. How hard could it be?' }
+                ] },
+              { key: 'B', label: 'Break and enter their offices.',
+                record: { sabotage: 'breakIn' },
+                then: [
+                  { type: 'say', speaker: 'Rachel', text:
+                    'Hard to pull off. Let\'s go with the malware idea you had ' +
+                    'last week. How hard could it be?' }
+                ] }
+            ] }
+        ]
+      }
+    ]},
+
+    { type: 'continue' }
+  ];
+
+  /* ======================================================================
+     SCENARIO 4 — Jerry has doubts. The plan proceeds anyway.
+     ==================================================================== */
+
+  S.scenario4 = [
+    { type: 'freshScreen' },
+    { type: 'locate', time: '4:55PM', location: 'Meeting Room #024, Second Floor' },
 
     { type: 'narrate', text:
-      'You exit the elevator. The lobby is completely empty. You jog toward ' +
-      'the doors. But what\'s that thing blocking the doors?' },
+      'You, Rachel, and Jerry furiously type away. You\'re trying to hit this ' +
+      '5:00PM deadline to install malware on the competitor\'s computers.' },
+    { type: 'fx', name: 'typingIntensify' },
+    { type: 'narrate', text:
+      'Suddenly, Jerry\'s face goes blank. He gets up, walks over to your desk, ' +
+      'and whispers in your ear.' },
+
+    { type: 'say', speaker: 'Jerry', text:
+      'Hey [player]. Is this… right? It feels like this attack could get us ' +
+      'all fired.' },
+
+    { type: 'narrate', text: '\nWhat do you say to Jerry?' },
+
+    { type: 'choose', options: [
+      {
+        key: 'A',
+        label: 'Jerry, get your head in the game.',
+        record: { jerryDoubt: 'focus' },
+        then: [
+          { type: 'say', speaker: 'Jerry', text: 'You\'re right. I need to focus.' },
+          { type: 'narrate', text:
+            'Jerry takes his thermos and chugs down the remainder of what was in it.' },
+          { type: 'say', speaker: 'Jerry', text: 'Glad I packed my vodka today.' }
+        ]
+      },
+      {
+        key: 'B',
+        label: 'You push Jerry to the front line.',
+        record: { jerryDoubt: 'frontline' },
+        then: [
+          { type: 'say', speaker: 'Jerry', text: 'I needed the push. Thanks, [player].' },
+          { type: 'narrate', text:
+            'Jerry takes his thermos and chugs down the remainder of what was in it.' },
+          { type: 'say', speaker: 'Jerry', text: 'Glad I packed my vodka today.' }
+        ]
+      },
+      {
+        key: 'C',
+        label: 'Say something else to Jerry.',
+        record: { jerryDoubt: 'open' },
+        then: [
+          { type: 'narrate', text: '\nJerry waits, very close to your ear.' },
+          { type: 'openInput', scene: 's4',
+            hint: 'whatever you say, the malware ships',
+            fallback: [
+              { key: 'A', label: 'Jerry, get your head in the game.',
+                record: { jerryDoubt: 'focus' },
+                then: [
+                  { type: 'say', speaker: 'Jerry', text: 'You\'re right. I need to focus.' },
+                  { type: 'narrate', text: 'Jerry drains his thermos.' },
+                  { type: 'say', speaker: 'Jerry', text: 'Glad I packed my vodka today.' }
+                ] },
+              { key: 'B', label: 'You push Jerry to the front line.',
+                record: { jerryDoubt: 'frontline' },
+                then: [
+                  { type: 'say', speaker: 'Jerry', text: 'I needed the push. Thanks, [player].' },
+                  { type: 'narrate', text: 'Jerry drains his thermos.' },
+                  { type: 'say', speaker: 'Jerry', text: 'Glad I packed my vodka today.' }
+                ] }
+            ] }
+        ]
+      }
+    ]},
+
+    { type: 'continue' }
+  ];
+
+  /* ======================================================================
+     SCENARIO 5 — the CEO. Jamie absolutely cannot get fired.
+     ==================================================================== */
+
+  S.scenario5 = [
+    { type: 'freshScreen' },
+    { type: 'locate', time: '5:02PM', location: 'Your Desk, Second Floor' },
+
+    { type: 'narrate', text:
+      'Somehow, with the blessing of Replak.ai shareholders — you, Rachel, and ' +
+      'Jerry manage to pull it off by the end of the meeting: there is now ' +
+      'malware installed on the competitor\'s computers.' },
+
+    { type: 'say', speaker: 'Rachel', text:
+      'We did it!!! Way to go, both of you. Proud to be your manager. I think ' +
+      'our leadership will be excited that we\'ve done everything it takes to ' +
+      'stay ahead of the competition.' },
+
+    { type: 'narrate', text:
+      'You go back to your desk and ask yourself if you want to get another ' +
+      'coffee. Just as you\'re about to head to the PHS, you receive a sudden ' +
+      'influx of messages and pings. You spot Rachel running over to you.' },
+
+    { type: 'fx', name: 'slackPing' },
+
+    { type: 'say', speaker: 'Rachel', text:
+      'Shoot. People are posting online about this malware attack. This is ' +
+      'looking really bad. We really shouldn\'t have done this, [player]. The ' +
+      'CEO is asking what happened and who did this.' },
+
+    { type: 'narrate', text:
+      'In the sea of text flooding your screen, you see a chat message from ' +
+      'your CEO.' },
+
+    { type: 'chat', from: 'CEO', text:
+      'Hey [player]. I\'m getting reports of us installing malware on ' +
+      'competitors\' computers. Did you do this?' },
+
+    { type: 'narrate', text: '\nHow do you respond back to your CEO?' },
+
+    { type: 'choose', options: [
+      {
+        key: 'A',
+        label: 'This is my chance to get fired — own the mistakes and take a graceful exit.',
+        record: { ceoAnswer: 'owned' },
+        then: [
+          { type: 'say', speaker: '[player]', text:
+            'Hey yea, that was me. I understand that this is a fireable ' +
+            'offense and you will have to let me go.' },
+          { type: 'say', speaker: 'CEO', text:
+            'Let you go? [player], this is incredible work! I\'m so impressed ' +
+            'by your out-of-the-box thinking and your instinct for doing ' +
+            'whatever it takes to destroy the competition. That\'s really ' +
+            'demonstrating Replak Core Value #5: If need be, install malware. ' +
+            'If anything, you\'re getting instantly promoted because of this!' }
+        ]
+      },
+      {
+        key: 'B',
+        label: 'No, I was forced into this. I never agreed to this.',
+        record: { ceoAnswer: 'forced' },
+        then: [
+          { type: 'say', speaker: '[player]', text:
+            'No, I was part of this, but I was forced into it by Rachel.' },
+          { type: 'say', speaker: 'CEO', text:
+            'Classic Rachel. I understand it\'s hard to say no to your ' +
+            'manager. In any case, though: this is great work by you all! I\'m ' +
+            'sure we can spin the story to make us look good. You have a long ' +
+            'career ahead of you here. With these successes under your belt, ' +
+            'you could be CEO one day!' }
+        ]
+      },
+      {
+        key: 'C',
+        label: 'Answer in your own words.',
+        record: { ceoAnswer: 'open' },
+        then: [
+          { type: 'narrate', text: '\nThe cursor blinks in the reply box.' },
+          { type: 'openInput', scene: 's5',
+            hint: 'there is no answer here that gets you fired',
+            fallback: [
+              { key: 'A', label: 'Own it and take a graceful exit.',
+                record: { ceoAnswer: 'owned' },
+                then: [
+                  { type: 'say', speaker: 'CEO', text:
+                    'Let you go? This is incredible work! Replak Core Value ' +
+                    '#5: If need be, install malware. You\'re getting promoted!' }
+                ] },
+              { key: 'B', label: 'Say you were forced into it.',
+                record: { ceoAnswer: 'forced' },
+                then: [
+                  { type: 'say', speaker: 'CEO', text:
+                    'Classic Rachel. Great work by you all — you could be CEO ' +
+                    'one day!' }
+                ] }
+            ] }
+        ]
+      }
+    ]},
+
+    { type: 'continue' }
+  ];
+
+  /* ======================================================================
+     EPILOGUE — 17 years later
+     ==================================================================== */
+
+  S.epilogue = [
+    { type: 'fx', name: 'staticFlip' },
+    { type: 'freshScreen' },
+    { type: 'locate', time: '17 YEARS LATER', location: 'The Penthouse, Top Floor' },
+
+    { type: 'narrate', text:
+      'It\'s been 17 years since "the attack". Yea… those 17 years weren\'t too ' +
+      'different from the day you lived out. And tomorrow you\'ll become the ' +
+      'next CEO of the company. Honestly, it wasn\'t a bad life.' },
+
+    { type: 'narrate', text:
+      'You take a sip from Jerry\'s thermos looking out from your penthouse ' +
+      'situated at the top floor of Replak.ai office which now is the highest ' +
+      'building in the city.' },
+
+    { type: 'narrate', text:
+      'You look to the wall, and you see the Replak plaques you have ' +
+      'accumulated. There are a great many of them.' },
 
     { type: 'wait', ms: 700 },
 
-    { type: 'narrate', text: 'It\'s a porcupine wearing a Replak.AI badge.' },
+    { type: 'narrate', text:
+      'Jerry walks out sleepily from the bedroom all disheveled.' },
 
-    { type: 'call', fn: function () { return ESC.ui.warp(2); } },
+    { type: 'say', speaker: 'Jerry', text: '[player], where did you go?' },
 
-    { type: 'art', art: ESC.ui.art.porcupine },
+    { type: 'say', speaker: '[player]', text: 'Jerry, get back to your desk.' },
 
-    { type: 'narrate', text: 'Like…as in Project Porcupine?' },
+    { type: 'wait', ms: 900 },
 
-    { type: 'say', speaker: 'Porcupine', text:
-      'Hi [player]. I\'m a porcupine. Like, as in Project Porcupine. Don\'t ' +
-      'you have more work to do on my project? I won\'t become a full-grown ' +
-      'porcupine if you don\'t complete all of my KPIs in time.' },
+    { type: 'fx', name: 'clockOut' },
+    { type: 'narrate', text: 'You failed to get fired.', speed: 46 },
 
-    { type: 'openInput', scene: 's3',
-      hint: 'it wants to know about its KPIs. it has nowhere else to be.' },
+    { type: 'wait', ms: 900 },
+    { type: 'marker', text: 'THE END' },
+    { type: 'restart', label: '[ PLAY AGAIN ]' }
   ];
 
   /* ======================================================================
-     EXIT — the ending branches on the clock and on the easter egg
+     SUDDEN DEATH — choosing the model-employee answer ends the run early
      ==================================================================== */
 
-  S.exit = [
-    { type: 'branch', pick: function (ledger, state) {
-
-      /* Easter egg: the porcupine portals you there, but without Parker. */
-      if (ledger.porcupineOutcome === 'lied') {
-        state.record('ending', 'portal');
-        return [
-          { type: 'say', speaker: 'Porcupine', text:
-            'Well then. Well then! Go. Go, you\'ve earned it. Let me get that ' +
-            'for you.' },
-          { type: 'fx', name: 'portal' },
-          { type: 'narrate', text:
-            'You step through and you are at the venue. The support act is ' +
-            'still on. The floor smells like beer and someone\'s coat.' },
-          { type: 'narrate', text: 'The time is [insert time]. You made it.' },
-          { type: 'wait', ms: 800 },
-          { type: 'narrate', text:
-            'You look around for Parker. You keep looking around for Parker.' },
-          { type: 'narrate', text:
-            'Parker is not here. Parker is standing outside an office building ' +
-            'across town, texting a person who is no longer in it.' },
-          { type: 'wait', ms: 900 }
-        ];
-      }
-
-      var left = state.minutesLeft();
-      state.record('ending', left >= 12 ? 'early' : left >= 4 ? 'close' : 'late');
-
-      var closer =
-        left >= 12 ? 'Hopefully Parker didn\'t have to wait too long.' :
-        left >= 4  ? 'You\'ll make it, but only just. You start composing the ' +
-                     'apology on the walk, then delete it, then start it again.' :
-                     'Parker is going to be livid.';
-
-      return [
-        { type: 'fx', name: 'daylight' },
-        { type: 'narrate', text:
-          'You\'re out. The time is [insert time]. You step out into the sun ' +
-          'and run to the train station.' },
-        { type: 'narrate', text: closer },
-        { type: 'wait', ms: 700 },
-        { type: 'narrate', text:
-          'As she\'s walking home, she gets a notification on her phone. She ' +
-          'glances and sees that it\'s an email from her leads. She decides to ' +
-          'not check the email, it\'ll still be there for her when she comes ' +
-          'into work tomorrow.' }
-      ];
-    }},
-
-    { type: 'wait', ms: 900 }
-  ];
-
-  /* ======================================================================
-     FAILURE ENDINGS
-     ==================================================================== */
-
-  S.failTime = [
-    { type: 'call', always: true, fn: function () { ESC.ui.setMood('ending-fail'); } },
-    { type: 'fx', name: 'clockOut', always: true },
-    { type: 'marker', text: '5:00 PM', always: true },
-    { type: 'narrate', always: true, text:
-      'The System closes. Not dramatically — it just stops accepting input, ' +
-      'the way a door stops being a door once it is locked.' },
-    { type: 'narrate', always: true, text:
-      'It is 5:00pm and you are still at your desk. Somewhere across town the ' +
-      'support act is finishing. Parker has stopped checking his phone.' },
-    { type: 'narrate', always: true, text:
-      'You did not exit The System at 5:00pm today. You promised Parker.' },
-    { type: 'wait', ms: 1200, always: true }
-  ];
-
-  S.failHp = [
+  S.suddenDeath = [
     { type: 'call', always: true, fn: function () { ESC.ui.setMood('ending-fail'); } },
     { type: 'fx', name: 'flatline', always: true },
-    { type: 'marker', text: 'ATTENTION LEVEL: ZERO', always: true },
     { type: 'narrate', always: true, text:
-      'Your concentration does not drop so much as arrive at the bottom.' },
-    { type: 'narrate', always: true, text:
-      'You are still sitting up. Your hands are still on the keys. The words ' +
-      'on the screen have stopped being words and become the shapes that words ' +
-      'are made of.' },
-    { type: 'narrate', always: true, text:
-      'REPLAK.AI logs the session as complete. You do not leave at 5:00pm. You ' +
-      'are not entirely sure when you leave.' },
-    { type: 'wait', ms: 1200, always: true }
-  ];
-
-  /* ======================================================================
-     EPILOGUE — dramatic irony. The evaluation report on the player.
-     Values are computed from the run, not hardcoded. That's the joke.
-     ==================================================================== */
-
-  function bar(pct) {
-    var filled = Math.round(pct / 10);
-    return new Array(filled + 1).join('█') + new Array(11 - filled).join('░');
-  }
-
-  function stars(n) {
-    return new Array(n + 1).join('★') + new Array(6 - n).join('☆');
-  }
-
-  function dotted(label, value) {
-    var pad = Math.max(2, 36 - label.length);
-    return '<span class="rk">' + label + ' ' +
-           new Array(pad).join('…') + '</span> <span class="rv">' + value + '</span>';
-  }
-
-  S.buildReport = function () {
-    var L = ESC.state.ledger;
-    var st = ESC.state;
-
-    /* Observed behaviours, straight off the ledger. */
-    var observed = [];
-    if (L.breakTaken)        observed.push('left desk (self-authorised, 4:00pm window)');
-    if (L.moveCount)         observed.push('attempted ambulation ×' + L.moveCount);
-    if (L.avoidCount)        observed.push('delayed responses ×' + L.avoidCount);
-    if (L.nonsenseCount)     observed.push('unparseable output ×' + L.nonsenseCount);
-    if (L.inspected.length)  observed.push('non-task visual attention ×' + L.inspected.length);
-    if (L.jerryOutcome === 'failed')   observed.push('escalation required (eng)');
-    if (L.rachelOutcome === 'emailed') observed.push('escalation required (lead)');
-    if (!observed.length)    observed.push('nominal');
-
-    /* Satirical metrics, derived. */
-    var conviction   = Math.max(4, Math.min(99,
-                        41 + L.justifyCount * 7 - L.typos * 3 - L.nonsenseCount * 5));
-    var calendar     = Math.max(0, Math.min(5,
-                        (L.rachelOutcome === 'complied' ? 3 : 1) + (L.avoidCount ? -1 : 0)));
-    var glow         = Math.max(1, Math.min(99,
-                        12 + (L.complyCount * 9) - (L.avoidCount * 4)));
-    var ambiguity    = 60 + L.justifyCount * 11 + L.warpLevel * 14;
-    var escape       = st.minutesLeft() >= 12 ? 'HIGH'
-                     : st.minutesLeft() >= 4  ? 'ELEVATED' : 'CONTAINED';
-    var bond         = L.porcupineOutcome === 'lied'      ? 'FALSIFIED'
-                     : L.porcupineOutcome === 'satisfied' ? 'REGRESSING'
-                     : 'UNASSESSED';
-    var identity     = (97 + (L.typos % 3) + (L.nonsenseCount % 2) * 0.4).toFixed(1);
-
-    return {
-      observed: observed,
-      rows: [
-        ['Identity Confidence',           identity + ' %'],
-        ['Core Motivation',               '"External Sentimentality" (Concert-Based)'],
-        ['Calendar Enthusiasm',           stars(calendar)],
-        ['Keyboard Conviction',           bar(conviction) + ' ' + conviction + ' %'],
-        ['Meeting Readiness Glow',        glow + ' Lux' + (glow < 40 ? ' (Sub-optimal)' : '')],
-        ['Strategic Ambiguity Tolerance', ambiguity + ' %' +
-                                          (ambiguity > 100 ? ' (Exceeds safe limits)' : '')],
-        ['Escape Orientation Index',      escape],
-        ['Porcupine Bond Strength',       bond]
-      ],
-      ownership:  L.complyCount  >= 2 ? 'DEMONSTRATED' : L.justifyCount ? 'PARTIAL' : 'NOT OBSERVED',
-      visibility: L.avoidCount   >= 2 ? 'INTERMITTENT' : 'ADEQUATE',
-      influence:  L.jerryOutcome === 'justified' ? 'EMERGENT' : 'DEFERRED TO PEER',
-      escape:     escape
-    };
-  };
-
-  S.epilogue = [
-    { type: 'fx', name: 'staticFlip', always: true },
-    { type: 'call', always: true, fn: function () {
-        ESC.ui.setMood('epilogue');
-        ESC.ui.clearTerminal();
-      }},
-
-
-    { type: 'fx', name: 'evaluatorPing', always: true },
-
-    { type: 'wait', ms: 600, always: true },
-
-    { type: 'narrate', always: true, text:
-      'Hey Rachel, this is the generated report of [player] for [date] of work.' },
-
-    { type: 'wait', ms: 700, always: true },
-
-    { type: 'call', always: true, fn: function () {
-      var r = S.buildReport();
-      var ui = ESC.ui;
-
-      ui.printHTML('<span class="rk">CORPORATE EVALUATION</span>', 'report');
-      ui.printHTML(dotted('Ownership',  r.ownership),  'report');
-      ui.printHTML(dotted('Visibility', r.visibility), 'report');
-      ui.printHTML(dotted('Influence',  r.influence),  'report');
-
-      ui.printHTML('<span class="rk">OBSERVED BEHAVIORS</span>', 'report');
-      r.observed.forEach(function (o) {
-        ui.printHTML('<span class="rv">  · ' + o + '</span>', 'report');
-      });
-
-      ui.printHTML('<span class="rk">SUPPLEMENTARY INDICES</span>', 'report');
-      r.rows.forEach(function (row) {
-        ui.printHTML(dotted(row[0], row[1]), 'report');
-      });
-
-      ui.printHTML('<span class="rk">RECOMMENDATION</span>', 'report');
-      ui.printHTML('<span class="rv">  Defer promotion until Escape Orientation &lt; 25 %</span>',
-                   'report');
-    }},
-
-    { type: 'wait', ms: 1400, always: true },
-
-    { type: 'say', always: true, speaker: 'Rachel', text:
-      'Thanks. Same as last quarter, then.' },
-
-    { type: 'wait', ms: 900, always: true },
-
-    { type: 'say', always: true, speaker: 'Rachel', text:
-      'She\'s fine. They\'re all fine. Send it to the leads and flag the ' +
-      'escape thing, they like that one.' },
-
-    { type: 'wait', ms: 1100, always: true },
-
-    { type: 'marker', text: 'GAME ENDS', always: true }
+      'That didn\'t go as planned…looks like you\'ll have to get fired another day.' },
+    { type: 'wait', ms: 800, always: true },
+    { type: 'marker', text: 'SUDDEN DEATH', always: true },
+    { type: 'restart', label: '[ PLAY AGAIN ]', always: true }
   ];
 
   return S;
