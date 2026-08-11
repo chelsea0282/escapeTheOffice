@@ -81,15 +81,15 @@ ESC.script = (function () {
     { type: 'narrate', text:
       'Project Porcupine is going sideways, but at least it launched this ' +
       'morning. You sense the quiet tension permeating the office. Everyone ' +
-      'else is silently, but furiously typing around you.' },
+      'else is silently but furiously typing around you.' },
 
     { type: 'fx', name: 'typingIntensify' },
 
     { type: 'narrate', text:
-      'You really can\'t keep doing this. Today has to be the day — there is ' +
-      'just a sense in the air, something\'s going to happen.' },
+      'You really can\'t keep doing this. Today has to be the day: you just ' +
+      'have a sense that something\'s going to happen.' },
     { type: 'narrate', text:
-      'You know you can\'t quit out of the blue though, there needs to be a ' +
+      'You know you can\'t quit out of the blue, though. There needs to be a ' +
       'compelling reason why.' },
 
     { type: 'wait', ms: 700 },
@@ -98,7 +98,7 @@ ESC.script = (function () {
     { type: 'wait', ms: 600 },
 
     { type: 'narrate', text: 'You decide to take a break to clear your head.' },
-    { type: 'narrate', text: 'You think to yourself \'Maybe I need some coffee\'.' },
+    { type: 'narrate', text: 'Maybe you need some coffee.' },
 
     { type: 'choose', question: 'Where should you get your coffee?', options: [
       {
@@ -134,7 +134,7 @@ ESC.script = (function () {
       },
       {
         key: 'C',
-        label: 'Say something else.',
+        label: 'Enter your own response.',
         echo: false,
         openEnded: true,
         record: { coffee: 'open' },
@@ -173,10 +173,19 @@ ESC.script = (function () {
       }
     ]},
 
-    { type: 'continue' },
-    { type: 'freshScreen' },
+    { type: 'continue' }
+  ];
 
-    /* ---- the kitchen -------------------------------------------------- */
+  /* ======================================================================
+     CARRY COFFEE — 4:05PM, Office Kitchen (the doc's own page 2/7 — a
+     separate scenario stop from the coffee-making tutorial above, not a
+     continuation of it. Keeping them as one beat array previously meant the
+     progress counter never ticked between them, understating every scene
+     number after it by one.)
+     ==================================================================== */
+
+  S.carryCoffee = [
+    { type: 'freshScreen' },
     { type: 'locate', time: '4:05PM', location: 'Office Kitchen, Second Floor' },
 
     { type: 'narrate', text: 'You spot your manager, Rachel, in the kitchen.' },
@@ -235,7 +244,7 @@ ESC.script = (function () {
       },
       {
         key: 'C',
-        label: 'Say something else.',
+        label: 'Enter your own response.',
         echo: false,
         openEnded: true,
         record: { carriedCoffee: 'open' },
@@ -364,7 +373,7 @@ ESC.script = (function () {
       },
       {
         key: 'C',
-        label: 'Write your own reply.',
+        label: 'Enter your own response.',
         echo: false,
         openEnded: true,
         record: { emailChoice: 'open' },
@@ -459,7 +468,7 @@ ESC.script = (function () {
       },
       {
         key: 'C',
-        label: 'Say something else.',
+        label: 'Enter your own response.',
         echo: false,
         openEnded: true,
         record: { blameChoice: 'open' },
@@ -537,7 +546,7 @@ ESC.script = (function () {
       },
       {
         key: 'C',
-        label: 'Suggest something else.',
+        label: 'Enter your own response.',
         echo: false,
         openEnded: true,
         record: { sabotage: 'open' },
@@ -602,9 +611,12 @@ ESC.script = (function () {
       },
       {
         key: 'B',
-        label: 'You push Jerry to the front line.',
+        label: 'You physically push Jerry.',
         record: { jerryDoubt: 'frontline' },
         then: [
+          { type: 'narrate', text:
+            'You push Jerry over and he collapses to the ground. He gets up ' +
+            'and smiles at you fondly.' },
           { type: 'say', speaker: 'Jerry', text: 'I needed the push. Thanks, [player].' },
           { type: 'narrate', text:
             'Jerry takes his thermos and chugs down the remainder of what was in it.' },
@@ -613,7 +625,7 @@ ESC.script = (function () {
       },
       {
         key: 'C',
-        label: 'Say something else to Jerry.',
+        label: 'Enter your own response.',
         echo: false,
         openEnded: true,
         record: { jerryDoubt: 'open' },
@@ -629,7 +641,7 @@ ESC.script = (function () {
                   { type: 'narrate', text: 'Jerry drains his thermos.' },
                   { type: 'say', speaker: 'Jerry', text: 'Glad I packed my vodka today.' }
                 ] },
-              { key: 'B', label: 'You push Jerry to the front line.',
+              { key: 'B', label: 'You physically push Jerry.',
                 record: { jerryDoubt: 'frontline' },
                 then: [
                   { type: 'say', speaker: 'Jerry', text: 'I needed the push. Thanks, [player].' },
@@ -718,7 +730,7 @@ ESC.script = (function () {
       },
       {
         key: 'C',
-        label: 'Answer in your own words.',
+        label: 'Enter your own response.',
         echo: false,
         openEnded: true,
         record: { ceoAnswer: 'open' },
@@ -769,8 +781,8 @@ ESC.script = (function () {
       'building in the city.' },
 
     { type: 'narrate', text:
-      'You look to the wall, and you see the Replak plaques you have ' +
-      'accumulated. There are a great many of them.' },
+      'You look to the wall and you see the Replak.ai plaques you accrued ' +
+      'over the years.' },
 
     { type: 'wait', ms: 700 },
 
@@ -788,7 +800,7 @@ ESC.script = (function () {
 
     { type: 'wait', ms: 900 },
     { type: 'marker', text: 'THE END' },
-    { type: 'restart', label: '[ PLAY AGAIN ]' }
+    { type: 'restart', label: 'PLAY AGAIN' }
   ];
 
   return S;

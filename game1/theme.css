@@ -11,11 +11,11 @@
 :root {
   /* ---- palette --------------------------------------------------------- */
   --bg:              #000000;
-  --bg-panel:        #030b04;
-  --phosphor:        #33ff66;
-  --phosphor-dim:    #1f9940;
-  --phosphor-faint:  #10521f;
-  --phosphor-bright: #b6ffcc;
+  --bg-panel:        #0a0a0a;
+  --phosphor:        #e6e6e6;
+  --phosphor-dim:    #999999;
+  --phosphor-faint:  #4d4d4d;
+  --phosphor-bright: #ffffff;
   --amber-warn:      #ffb000;
   --red-error:       #ff4d4d;
 
@@ -23,7 +23,6 @@
   --scanline-opacity: 0.20;
   --scanline-size:    3px;
   --flicker-rate:     7s;
-  --glow-radius:      6px;
   --vignette-strength: 0.85;
 
   /* ---- type ------------------------------------------------------------ */
@@ -62,7 +61,6 @@ body {
   line-height: var(--lh);
   letter-spacing: var(--tracking);
   color: var(--phosphor);
-  text-shadow: 0 0 var(--glow-radius) rgba(51, 255, 102, .55);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -120,7 +118,7 @@ button:hover { color: var(--phosphor-bright); }
 }
 
 #flicker {
-  background: rgba(51, 255, 102, .022);
+  background: rgba(255, 255, 255, .022);
   animation: flicker var(--flicker-rate) steps(1) infinite;
 }
 
@@ -151,7 +149,6 @@ button:hover { color: var(--phosphor-bright); }
   color: var(--phosphor-bright);
   font-size: clamp(22px, 4.4vw, 42px);
   letter-spacing: .1em;
-  text-shadow: 0 0 14px rgba(51,255,102,.85);
 }
 
 #title-prompt {
@@ -159,6 +156,8 @@ button:hover { color: var(--phosphor-bright); }
   color: var(--phosphor-dim);
   font-size: var(--fs-small);
   letter-spacing: .24em;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .blink { animation: blink 1.05s steps(1) infinite; }
@@ -244,7 +243,7 @@ button:hover { color: var(--phosphor-bright); }
 
 #caption-bar.bumping { animation: caption-bump 620ms ease-out; }
 @keyframes caption-bump {
-  0%   { border-color: var(--phosphor-bright); background: rgba(51,255,102,.10); }
+  0%   { border-color: var(--phosphor-bright); background: rgba(255,255,255,.10); }
   100% { border-color: var(--phosphor-dim);    background: var(--bg-panel); }
 }
 
@@ -297,6 +296,10 @@ button:hover { color: var(--phosphor-bright); }
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--phosphor-faint) transparent;
+  /* Clicking anywhere here can double as "click to advance" — text must
+     never get selected as a side effect of that click. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 #terminal::-webkit-scrollbar { width: 8px; }
 #terminal::-webkit-scrollbar-thumb { background: var(--phosphor-faint); }
@@ -304,10 +307,29 @@ button:hover { color: var(--phosphor-bright); }
 #terminal-scroll > * { margin: 0 0 .55em; }
 
 /* line kinds */
+
 .line-narrate { color: var(--phosphor); white-space: pre-wrap; }
 
-.line-say { color: var(--phosphor); white-space: pre-wrap; }
+/* Bold on every speaker tag, regardless of line kind — the one visual cue
+   that reads as "someone is talking" separate from narration. */
+.speaker { font-weight: 700; }
+
+/* Dialogue reads as speech: full brightness, wrapped in quotes, and boxed
+   between two white rules so it visibly breaks from the narration around
+   it, without leaving the terminal's own bounding box. */
+.line-say {
+  color: var(--phosphor);
+  white-space: pre-wrap;
+  border-top: var(--border-w) solid var(--phosphor-bright);
+  border-bottom: var(--border-w) solid var(--phosphor-bright);
+  padding: 6px 0;
+  /* More air than the default line gap, so dialogue reads as its own beat
+     against the narration around it, not just another paragraph. */
+  margin: 16px 0 !important;
+}
 .line-say .speaker { color: var(--phosphor-bright); }
+.line-say .line-body::before { content: '\201C'; }
+.line-say .line-body::after  { content: '\201D'; }
 
 .line-visual {
   color: var(--phosphor-dim);
@@ -319,11 +341,16 @@ button:hover { color: var(--phosphor-bright); }
 .line-system {
   color: var(--amber-warn);
   white-space: pre-wrap;
-  text-shadow: 0 0 var(--glow-radius) rgba(255,176,0,.5);
 }
 .line-system .speaker { letter-spacing: .12em; }
 
-.line-player { color: var(--phosphor-bright); white-space: pre-wrap; }
+.line-player {
+  color: var(--phosphor-bright);
+  white-space: pre-wrap;
+  /* A bit of extra air above, so a typed response reads as distinct from
+     the dialogue it follows, not just another line of it. */
+  margin-top: 22px !important;
+}
 .line-player .speaker { color: var(--phosphor-dim); }
 
 /* Silent scene break — what the player gets instead of "SCENARIO 1 BEGINS". */
@@ -334,12 +361,12 @@ button:hover { color: var(--phosphor-bright); }
 }
 
 .line-marker {
-  color: var(--phosphor-faint);
+  color: var(--phosphor-bright);
   font-size: var(--fs-small);
   letter-spacing: .28em;
   text-align: center;
-  border-top: var(--border-w) solid var(--phosphor-faint);
-  border-bottom: var(--border-w) solid var(--phosphor-faint);
+  border-top: var(--border-w) solid var(--phosphor-dim);
+  border-bottom: var(--border-w) solid var(--phosphor-dim);
   padding: .3em 0;
 }
 
@@ -359,7 +386,7 @@ button:hover { color: var(--phosphor-bright); }
 
 .mail {
   border: var(--border-w) solid var(--phosphor-dim);
-  background: rgba(51, 255, 102, .04);
+  background: rgba(255, 255, 255, .04);
   padding: 12px 15px;
   margin: 0 0 .8em !important;
 }
@@ -380,7 +407,7 @@ button:hover { color: var(--phosphor-bright); }
 
 .chat {
   border-left: 3px solid var(--phosphor);
-  background: rgba(51, 255, 102, .05);
+  background: rgba(255, 255, 255, .05);
   padding: 9px 14px;
   margin: 0 0 .8em !important;
   max-width: 46ch;
@@ -398,12 +425,17 @@ button:hover { color: var(--phosphor-bright); }
 .continue {
   font-style: italic;
   font-size: var(--fs-small);
-  color: var(--phosphor-dim);
+  color: var(--phosphor-bright);
   letter-spacing: .1em;
+  /* 44px, not 36px: this margin collapses with the preceding line's .55em
+     (~8px) bottom margin, so 44px is what actually lands 36px lower. */
+  margin-top: 44px !important;
   animation: continue-pulse 1.7s ease-in-out infinite;
+  user-select: none;
+  -webkit-user-select: none;
 }
 @keyframes continue-pulse {
-  0%, 100% { opacity: .45; }
+  0%, 100% { opacity: .8; }
   50%      { opacity: 1; }
 }
 
@@ -436,8 +468,8 @@ button:hover { color: var(--phosphor-bright); }
   background: var(--bg-panel);
 }
 .restart-btn:hover {
-  background: rgba(51, 255, 102, .14);
-  box-shadow: 0 0 18px rgba(51, 255, 102, .35);
+  background: rgba(255, 255, 255, .14);
+  box-shadow: 0 0 18px rgba(255, 255, 255, .35);
 }
 
 /* ---- choice panel -----------------------------------------------------
@@ -449,7 +481,7 @@ button:hover { color: var(--phosphor-bright); }
   border: var(--border-w) solid var(--phosphor);
   background: var(--bg-panel);
   padding: 12px 16px;
-  box-shadow: 0 0 20px rgba(51, 255, 102, .16);
+  box-shadow: 0 0 8px rgba(255, 255, 255, .10);
   animation: choice-in 260ms ease-out;
 }
 
@@ -471,14 +503,42 @@ button:hover { color: var(--phosphor-bright); }
 }
 
 #choice-options li {
-  color: var(--phosphor-dim);
-  margin: .18em 0;
-  padding: .1em 0;
-  transition: color 140ms ease;
+  color: var(--phosphor);
+  margin: .5em -8px;
+  padding: .22em 8px;
+  border-radius: 3px;
+  transition: color 140ms ease, background-color 140ms ease;
 }
 #choice-options li .choice-key { color: var(--phosphor-bright); }
 #choice-options li.armed { color: var(--phosphor-bright); }
-#choice-options li.armed .choice-key { text-shadow: 0 0 10px rgba(51,255,102,.9); }
+
+#choice-options li.clickable { cursor: pointer; user-select: none; -webkit-user-select: none; }
+#choice-options li.clickable:hover {
+  color: var(--phosphor-bright);
+  background-color: rgba(255, 255, 255, .12);
+}
+
+/* ---- the open option's own inline text box, in place of a list label --- */
+
+#choice-options li.choice-open {
+  display: flex;
+  align-items: baseline;
+  gap: .3em;
+}
+.choice-open-field {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--phosphor-bright);
+  background: none;
+  border: none;
+  border-bottom: var(--border-w) solid var(--phosphor-faint);
+  padding: .1em 0;
+  outline: none;
+}
+.choice-open-field:focus { border-bottom-color: var(--phosphor); }
+.choice-open-field::placeholder { color: var(--phosphor-dim); }
 
 .cursor { animation: blink 1.05s steps(1) infinite; }
 
@@ -498,8 +558,8 @@ button:hover { color: var(--phosphor-bright); }
   animation: input-glow 1.8s ease-in-out infinite;
 }
 @keyframes input-glow {
-  0%, 100% { box-shadow: 0 0 0 rgba(51,255,102,0); }
-  50%      { box-shadow: 0 0 18px rgba(51,255,102,.35); }
+  0%, 100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+  50%      { box-shadow: 0 0 18px rgba(255,255,255,.35); }
 }
 
 #input-prompt { color: var(--phosphor-dim); }
@@ -530,7 +590,7 @@ button:hover { color: var(--phosphor-bright); }
   margin: 0;
   min-height: 1.2em;
   font-size: var(--fs-small);
-  color: var(--phosphor-faint);
+  color: var(--phosphor-dim);
   letter-spacing: .1em;
 }
 
@@ -576,7 +636,6 @@ button:hover { color: var(--phosphor-bright); }
   padding: 20px 22px;
   color: var(--amber-warn);
   white-space: pre-wrap;
-  text-shadow: 0 0 var(--glow-radius) rgba(255,176,0,.5);
 }
 
 #modal-hint {
@@ -614,7 +673,7 @@ button:hover { color: var(--phosphor-bright); }
   width: 26px;
   height: 18px;
   border: var(--border-w) solid var(--phosphor);
-  background: rgba(51, 255, 102, .07);
+  background: rgba(255, 255, 255, .07);
   animation: fx-box-in 180ms ease-out;
 }
 .fx-box.gone { animation: fx-box-out 260ms ease-in forwards; }
@@ -642,24 +701,6 @@ button:hover { color: var(--phosphor-bright); }
   0%, 100% { filter: none; }
   50%      { filter: sepia(1) saturate(4) hue-rotate(-18deg); }
 }
-
-/* ---- mute toggle ------------------------------------------------------- */
-
-#fx-mute {
-  position: absolute;
-  left: 18px;
-  bottom: 14px;
-  pointer-events: auto;
-  font-size: var(--fs-small);
-  letter-spacing: .1em;
-  color: var(--phosphor-dim);
-  border: var(--border-w) solid var(--phosphor-faint);
-  padding: 3px 8px;
-  background: var(--bg-panel);
-  z-index: 720;
-}
-#fx-mute:hover { color: var(--phosphor-bright); border-color: var(--phosphor-dim); }
-#fx-mute.off   { color: var(--phosphor-faint); }
 
 /* ============================================================================
    WARP — the surreal glitch when the player's input is absurd
@@ -702,7 +743,7 @@ button:hover { color: var(--phosphor-bright); }
    ENDINGS
    ========================================================================== */
 
-#crt.ending-good  { --phosphor: #b6ffcc; --phosphor-bright: #ffffff; }
+#crt.ending-good  { --phosphor: #ffffff; --phosphor-bright: #ffffff; }
 #crt.epilogue     { --phosphor: #7fd6ff; --phosphor-dim: #3d7fa3; --phosphor-bright: #d6f2ff;
                     --phosphor-faint: #14384a; }
 

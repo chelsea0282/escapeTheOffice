@@ -10,12 +10,10 @@
 
        { type: 'fx', name: 'slackPing' }
 
-   Sound is synthesised with the Web Audio API. There are no audio files and
-   nothing to download — every noise in this game is a few oscillators and a
-   noise buffer. Browsers block audio until a user gesture, so nothing is
-   audible until the title-card keypress calls fx.unlock().
-
-   Adding a cue = add a function to EFFECTS. Nothing else needs to change.
+   The game plays no audio — tone()/noise() are permanently disabled below
+   (ensure() never opens an AudioContext), so every EFFECTS entry runs as a
+   silent, visual-and-timing-only cue. Adding a cue = add a function to
+   EFFECTS. Nothing else needs to change.
    ========================================================================== */
 
 window.ESC = window.ESC || {};
@@ -36,38 +34,11 @@ ESC.fx = (function () {
   /* Ambient typing loop state. */
   var typing = { timer: null, level: 0 };
 
-  function ensure() {
-    if (ctx) return ctx;
-    var AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;                       // no Web Audio: stay silent
-    try {
-      ctx = new AC();
-      master = ctx.createGain();
-      master.gain.value = 0.5;
-      master.connect(ctx.destination);
-    } catch (e) {
-      ctx = null;
-    }
-    return ctx;
-  }
+  /* The game plays no audio — this never opens a real AudioContext, so
+     tone()/noise() below always no-op. */
+  function ensure() { return null; }
 
-  /* Called from the title-card keypress — the gesture browsers require. */
-  fx.unlock = function () {
-    var c = ensure();
-    if (!c) return;
-    if (c.state === 'suspended') c.resume();
-    unlocked = true;
-  };
-
-  fx.isMuted = function () { return muted; };
-
-  fx.toggleMute = function () {
-    muted = !muted;
-    if (master) master.gain.value = muted ? 0 : 0.5;
-    if (muted) stopTyping();
-    else if (typing.level) startTyping(typing.level);
-    return muted;
-  };
+  fx.unlock = function () {};
 
   function now() { return ctx ? ctx.currentTime : 0; }
 
@@ -321,24 +292,6 @@ ESC.fx = (function () {
 
   fx.has = function (name) { return !!EFFECTS[name]; };
   fx.effects = EFFECTS;
-
-  /* The mute control. Built here rather than in index.html because it only
-     exists if this layer is loaded. */
-  fx.mountMuteToggle = function () {
-    var host = el('fx-layer');
-    if (!host || el('fx-mute')) return;
-    var b = document.createElement('button');
-    b.id = 'fx-mute';
-    b.type = 'button';
-    b.textContent = '[♪]';
-    b.title = 'mute / unmute';
-    b.addEventListener('click', function () {
-      var m = fx.toggleMute();
-      b.textContent = m ? '[ ]' : '[♪]';
-      b.classList.toggle('off', m);
-    });
-    host.appendChild(b);
-  };
 
   return fx;
 })();

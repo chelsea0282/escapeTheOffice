@@ -49,6 +49,7 @@ ESC.state = (function () {
 
       openInputs:     [],   // everything the player typed, for the epilogue
       praiseCount:    0,    // how many times the office rewarded them
+      rewardsUsed:    [],   // reward_mechanic ids the LLM has already used this run
       restarts:       0
     }
   };
@@ -167,7 +168,7 @@ ESC.state = (function () {
       name: keepName ? name : '',
       coffee: '', carriedCoffee: '', emailChoice: '', blameChoice: '',
       sabotage: '', jerryDoubt: '', ceoAnswer: '',
-      openInputs: [], praiseCount: 0, restarts: restarts
+      openInputs: [], praiseCount: 0, rewardsUsed: [], restarts: restarts
     };
     notify('reset');
   };

@@ -22,6 +22,7 @@ ESC.main = (function () {
 
   var ORDER = [
     'tutorial',
+    'carryCoffee',
     'scenario0',
     'scenario1',
     'scenario2',
@@ -37,6 +38,16 @@ ESC.main = (function () {
     });
   }
 
+  /* The doc numbers exactly 7 scenario stops (tutorial through the CEO
+     scene) — epilogue is the coda after them, not an 8th stop, so it's
+     excluded from the "SCENARIO n/7" denominator. Its own advanceScene
+     call still lands one index past the last numbered stop, which is what
+     brings the progress bar to a literal 100% once it starts. */
+  function numberedTotal() {
+    var p = playable();
+    return p.indexOf('epilogue') !== -1 ? p.length - 1 : p.length;
+  }
+
   /* ======================================================================
      TITLE CARD
      ==================================================================== */
@@ -48,11 +59,6 @@ ESC.main = (function () {
         if (e.type === 'keydown' && (e.metaKey || e.ctrlKey || e.altKey)) return;
         document.removeEventListener('keydown', go);
         document.removeEventListener('click', go);
-        /* This keypress is the user gesture browsers require before any audio
-           may play, so the whole sound design hangs off it. */
-        ESC.fx.unlock();
-        ESC.fx.mountMuteToggle();
-        ESC.fx.play('deepBop');
         resolve();
       }
       document.addEventListener('keydown', go);
@@ -66,7 +72,7 @@ ESC.main = (function () {
 
   function playFrom(index) {
     var scenes = playable();
-    ESC.state.sceneTotal = scenes.length;
+    ESC.state.sceneTotal = numberedTotal();
 
     var chain = Promise.resolve();
     for (var i = index; i < scenes.length; i++) {
@@ -101,7 +107,7 @@ ESC.main = (function () {
     if (started) return;
     started = true;
 
-    ESC.state.sceneTotal = playable().length;
+    ESC.state.sceneTotal = numberedTotal();
     ESC.ui.syncChrome();
 
     return titleCard()
@@ -131,7 +137,7 @@ ESC.main = (function () {
     ESC.ui.setMood(null);
     ESC.ui.clearTerminal();
     ESC.ui.show('game');
-    ESC.state.sceneTotal = playable().length;
+    ESC.state.sceneTotal = numberedTotal();
     ESC.ui.syncChrome();
     ESC.fx.play('bootBops');
     return playFrom(0).catch(function (err) {
@@ -152,7 +158,7 @@ ESC.main = (function () {
       ESC.ui.show('game');
       ESC.ui.clearTerminal();
       ESC.ui.showChrome();
-      ESC.state.sceneTotal = playable().length;
+      ESC.state.sceneTotal = numberedTotal();
       ESC.ui.syncChrome();
 
       var scenes = playable();

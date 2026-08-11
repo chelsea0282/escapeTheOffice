@@ -149,6 +149,7 @@ ESC.ui = (function () {
     }
 
     var body = document.createElement('span');
+    body.className = 'line-body';
     p.appendChild(body);
 
     var caret = document.createElement('span');
@@ -367,7 +368,7 @@ ESC.ui = (function () {
     var b = document.createElement('button');
     b.className = 'restart-btn';
     b.type = 'button';
-    b.textContent = label || '[ PLAY AGAIN ]';
+    b.textContent = label || 'PLAY AGAIN';
     wrap.appendChild(b);
     el['terminal-scroll'].appendChild(wrap);
     scrollDown();
@@ -576,7 +577,10 @@ ESC.ui = (function () {
      on selection — the terminal only records what ends up happening.
      ==================================================================== */
 
-  ui.showChoices = function (question, options) {
+  /* onPick(option) fires on click for any non-open option. onOpenSubmit(text)
+     fires when the open option's own inline text box is submitted with
+     ENTER — that option has no click target of its own, the box IS it. */
+  ui.showChoices = function (question, options, onPick, onOpenSubmit) {
     el['choice-question'].textContent = question ? ESC.state.interpolate(question) : '';
     var host = el['choice-options'];
     host.innerHTML = '';
@@ -586,7 +590,33 @@ ESC.ui = (function () {
       k.className = 'choice-key';
       k.textContent = o.key + '. ';
       li.appendChild(k);
-      li.appendChild(document.createTextNode(ESC.state.interpolate(o.label)));
+
+      if (o.openEnded) {
+        li.className = 'choice-open';
+        var field = document.createElement('input');
+        field.type = 'text';
+        field.id = 'choice-open-field';
+        field.className = 'choice-open-field';
+        field.placeholder = ESC.state.interpolate(o.label);
+        field.maxLength = 500;
+        /* No browser autocomplete: past scenes' answers must never surface
+           as a suggestion while typing a later one. */
+        field.autocomplete = 'off';
+        field.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          var v = field.value.trim();
+          if (!v || !onOpenSubmit) return;
+          onOpenSubmit(v);
+        });
+        li.appendChild(field);
+      } else {
+        li.classList.add('clickable');
+        li.appendChild(document.createTextNode(ESC.state.interpolate(o.label)));
+        li.addEventListener('click', function () {
+          if (onPick) onPick(o);
+        });
+      }
       host.appendChild(li);
     });
     el['choice-panel'].classList.remove('hidden');

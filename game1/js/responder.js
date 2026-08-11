@@ -151,6 +151,10 @@ ESC.responder = (function () {
       if (x.length < 4) return false;
       if (COMMON.indexOf(x) !== -1) return false;
       if (isKnownTerm(x)) return false;
+      /* An elongated exclamation (ahhhh, ughhh, grrrr, noooo) repeats one
+         character in a run — that's emphasis, not keyboard mashing, which
+         tends to alternate between different characters instead. */
+      if (/(.)\1{2,}/.test(x)) return false;
       if (!/[aeiouy]/.test(x)) return true;
       return /[^aeiouy]{4,}/.test(x);
     }).length;
@@ -261,10 +265,16 @@ ESC.responder = (function () {
 
     if (ESC.fx && ESC.fx.play) ESC.fx.play('typingStart');
 
-    return ESC.llm.reply(raw, scene)
+    return ESC.llm.reply(raw, scene, ESC.state.ledger.rewardsUsed)
       .then(function (result) {
         if (result.cannotJustify) return nonsenseVerdict(intent);
         ESC.state.bump('praiseCount');
+        /* Remember which reward mechanic this was so future scenes in the
+           same playthrough exclude it — see js/llm.js and respond.js. */
+        if (result.rewardMechanic &&
+            ESC.state.ledger.rewardsUsed.indexOf(result.rewardMechanic) === -1) {
+          ESC.state.ledger.rewardsUsed.push(result.rewardMechanic);
+        }
         return {
           intent: intent,
           resolve: true,          /* one turn, then the script continues */

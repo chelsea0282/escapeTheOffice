@@ -164,10 +164,9 @@ ESC.engine = (function () {
      "type out one of multiple options" and A/B selection.
      ==================================================================== */
 
-  /* A pending open-text response, staged by choose() when the player typed
-     straight past the A/B menu instead of selecting the open-input option
-     first. The very next openInput() call consumes and clears it — see
-     openInput() below. */
+  /* A pending open-text response, staged by choose() when the player submits
+     through the open option's own inline text box. The very next openInput()
+     call consumes and clears it — see openInput() below. */
   var stagedInput = null;
 
   function choose(options, opts) {
@@ -175,94 +174,81 @@ ESC.engine = (function () {
     var u = U();
 
     /* At most one option per choice is the open-text branch (script.js marks
-       it `openEnded: true`). If present, the player can either select it
-       like any other option, or just start typing their own response and
-       press ENTER — no need to select it first. */
+       it `openEnded: true`). It renders as its own inline text box in the
+       choice panel — not a shared bar below the terminal — so the player can
+       click into it and type directly, with no need to select it first. */
     var openOption = null;
     for (var k = 0; k < options.length; k++) {
       if (options[k].openEnded) { openOption = options[k]; break; }
     }
-    var pickableKeys = options
-      .filter(function (o) { return o !== openOption; })
-      .map(function (o) { return o.key; });
-
-    /* Options render in the panel BELOW the terminal, not in the narration. */
-    u.showChoices(opts.question, options);
-
-    u.showInput('>', true);
-    u.setHint(openOption
-      ? 'type ' + pickableKeys.join(' / ') + ', or write your own response, then ENTER'
-      : 'type ' + pickableKeys.join(' / ') + ', or type the option out in full, then ENTER');
 
     var typed = '';
 
+    /* Letter/number matching only — never the open option, which is
+       submitted through its own text box instead. */
     function match(input) {
       var t = input.toLowerCase().trim();
       if (!t) return null;
       for (var i = 0; i < options.length; i++) {
-        if (t === options[i].key.toLowerCase() ||
-            t === String(i + 1) ||
-            t === 'option ' + options[i].key.toLowerCase()) return options[i];
-      }
-      for (var j = 0; j < options.length; j++) {
-        var label = ESC.state.interpolate(options[j].label).toLowerCase();
-        if (t.length >= 6 && (label.indexOf(t) === 0 || t.indexOf(label.slice(0, 20)) === 0)) {
-          return options[j];
-        }
+        if (options[i] === openOption) continue;
+        if (t === options[i].key.toLowerCase() || t === String(i + 1)) return options[i];
       }
       return null;
     }
 
     return new Promise(function (resolve) {
-      var release = captureKeys(function (e) {
+      var release;
+
+      /* Shared by a click, a keyboard Enter, and the open box's own submit. */
+      function finish(picked, openText) {
+        release();
+        u.hideChoices();
+        if (openText !== undefined) stagedInput = openText;
+
+        /*
+           Record what ends up happening. The option list itself never
+           reaches the terminal; the chosen line does, unless the scene
+           already narrates it (echo: false). The open-text case always has
+           echo: false in practice (its own then: block echoes the typed
+           line via openInput), but guard anyway so a mislabeled scene
+           can't double-print.
+        */
+        if (picked.echo !== false && picked !== openOption) {
+          u.printLine('> ' + ESC.state.interpolate(picked.echo || picked.label), 'player');
+        }
+        resolve(picked);
+      }
+
+      release = captureKeys(function (e) {
+        /* Let the open box's own input handling run untouched. */
+        if (e.target && e.target.id === 'choice-open-field') return;
+
         if (e.key === 'Enter') {
           e.preventDefault();
           var picked = match(typed);
-
-          /* Nothing matched a preset option — if there's an open-text
-             branch and they actually typed something, treat that text as
-             their answer to it directly, instead of making them retype it
-             after separately selecting the option. */
-          if (!picked && openOption && typed.trim()) {
-            picked = openOption;
-            stagedInput = typed;
-          }
-
-          if (!picked) {
-            u.setHint('pick one of the options below, or write your own response');
-            return;
-          }
-          release();
-          u.hideChoices();
-          u.hideInput();
-
-          /*
-             Record what ends up happening. The option list itself never
-             reaches the terminal; the chosen line does, unless the scene
-             already narrates it (echo: false). The auto-staged open-text
-             case always has echo: false in practice (its own then: block
-             echoes the typed line via openInput), but guard anyway so a
-             mislabeled scene can't double-print.
-          */
-          if (picked.echo !== false && picked !== openOption) {
-            u.printLine('> ' + ESC.state.interpolate(picked.echo || picked.label), 'player');
-          }
-          resolve(picked);
+          if (picked) finish(picked);
           return;
         }
         if (e.key === 'Backspace') {
           e.preventDefault();
           typed = typed.slice(0, -1);
-          u.setTyped(typed);
           u.armChoice(options.indexOf(match(typed)));
           return;
         }
         if (e.key.length !== 1) return;
         e.preventDefault();
         typed += e.key;
-        u.setTyped(typed);
         u.armChoice(options.indexOf(match(typed)));
       });
+
+      /* Options render in the panel BELOW the terminal, not in the
+         narration. Clicking A/B resolves immediately; submitting the open
+         box (Enter inside it) resolves to the open option with its text. */
+      u.showChoices(opts.question, options, function (picked) {
+        finish(picked);
+      }, openOption ? function (text) {
+        finish(openOption, text);
+      } : null);
     });
   }
 
@@ -288,7 +274,7 @@ ESC.engine = (function () {
     var u = U();
 
     function respond(input) {
-      u.printLine(input, 'player');
+      u.printLine('> ' + input, 'player');
       u.showThinking();
 
       return ESC.responder.evaluate(input, { scene: cfg.scene }).then(function (verdict) {
@@ -323,7 +309,12 @@ ESC.engine = (function () {
     var chain = Promise.resolve();
     (lines || []).forEach(function (l) {
       chain = chain.then(function () {
-        return U().typeLine(l.text, { kind: l.kind || 'say', speaker: l.speaker });
+        /* The model's schema has no `kind` field — only `speaker` (which is
+           '' for a bare narration line). Without a speaker to attribute it
+           to, a line is narration, not dialogue, and must not get the
+           quoted/boxed .line-say treatment. */
+        var kind = l.kind || (l.speaker ? 'say' : 'narrate');
+        return U().typeLine(l.text, { kind: kind, speaker: l.speaker });
       });
     });
     return chain;

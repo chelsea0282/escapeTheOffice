@@ -16,17 +16,23 @@ ESC.llm = (function () {
 
   var ENDPOINT = '/.netlify/functions/respond';
 
-  /* Returns a Promise<{ cannotJustify: false, lines: [{speaker,text}] } |
-     { cannotJustify: true }>. Rejects on any failure — the caller
-     (responder.js) decides what to do about that. cannotJustify is the
-     model's own call that this input can't be spun into anything (per the
-     doc: "if an action absolutely cannot be justified, show the pre-set
-     options") — distinct from a network/API failure. */
-  function reply(text, scene) {
+  /* usedRewards: reward_mechanic ids already used earlier in this
+     playthrough (ESC.state.ledger.rewardsUsed) — sent so the server can
+     exclude them from this call's options and keep rewards varied.
+
+     Returns a Promise<
+       { cannotJustify: false, lines: [{speaker,text}], rewardMechanic: string|null } |
+       { cannotJustify: true }
+     >. Rejects on any failure — the caller (responder.js) decides what to
+     do about that. cannotJustify is the model's own call that this input
+     can't be spun into anything (per the doc: "if an action absolutely
+     cannot be justified, show the pre-set options") — distinct from a
+     network/API failure. */
+  function reply(text, scene, usedRewards) {
     return fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scene: scene, text: text })
+      body: JSON.stringify({ scene: scene, text: text, usedRewards: usedRewards || [] })
     })
       .then(function (res) {
         if (!res.ok) throw new Error('LLM endpoint returned ' + res.status);
@@ -38,7 +44,11 @@ ESC.llm = (function () {
         if (!Array.isArray(data.lines) || !data.lines.length) {
           throw new Error('LLM endpoint returned no lines');
         }
-        return { cannotJustify: false, lines: data.lines };
+        return {
+          cannotJustify: false,
+          lines: data.lines,
+          rewardMechanic: data.rewardMechanic || null
+        };
       });
   }
 
