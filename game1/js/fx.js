@@ -102,7 +102,7 @@ ESC.fx = (function () {
     osc.stop(t0 + dur + 0.02);
   }
 
-  /* Filtered white noise — keystrokes, static, the shutter. */
+  /* Filtered white noise — keystrokes, static. */
   function noise(opts) {
     var c = ensure();
     if (!c || muted || !unlocked) return;
@@ -158,29 +158,6 @@ ESC.fx = (function () {
 
   function el(id) { return document.getElementById(id); }
 
-  /* A Slack-style notification sliding in over the terminal. */
-  function toast(title, body, ms) {
-    var host = el('fx-layer');
-    if (!host) return Promise.resolve();
-    var n = document.createElement('div');
-    n.className = 'fx-toast';
-    var h = document.createElement('div');
-    h.className = 'fx-toast-title';
-    h.textContent = title;
-    var p = document.createElement('div');
-    p.className = 'fx-toast-body';
-    p.textContent = body;
-    n.appendChild(h); n.appendChild(p);
-    host.appendChild(n);
-    requestAnimationFrame(function () { n.classList.add('in'); });
-    return new Promise(function (resolve) {
-      setTimeout(function () {
-        n.classList.remove('in');
-        setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); resolve(); }, 320);
-      }, ms || 2200);
-    });
-  }
-
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
   /* ======================================================================
@@ -218,12 +195,6 @@ ESC.fx = (function () {
       tone({ freq: 880, dur: 0.14, type: 'square', gain: 0.09, delay: 0.32 });
       tone({ freq: 110, to: 70, dur: 0.6, type: 'sine', gain: 0.16, delay: 0.46 });
       return sleep(700);
-    },
-
-    shutter: function () {
-      noise({ dur: 0.035, freq: 3200, q: 0.6, gain: 0.30 });
-      noise({ dur: 0.10,  freq: 900,  q: 0.8, gain: 0.18, delay: 0.05 });
-      tone({ freq: 1500, dur: 0.05, type: 'square', gain: 0.06, delay: 0.02 });
     },
 
     /* -- the office ---------------------------------------------------- */
@@ -268,11 +239,11 @@ ESC.fx = (function () {
       });
     },
 
-    /* Jerry's face popping up on your screen. */
+    /* Jerry pinging you — sound only, no on-screen notification. */
     slackPing: function () {
       tone({ freq: 880,  dur: 0.09, type: 'sine', gain: 0.22 });
       tone({ freq: 1320, dur: 0.13, type: 'sine', gain: 0.18, delay: 0.10 });
-      return toast('JERRY', 'is typing…', 2000);
+      return sleep(2000);
     },
 
     /* The Replak.AI warning sign arriving. */
@@ -326,12 +297,6 @@ ESC.fx = (function () {
       return sleep(700);
     },
 
-    flatline: function () {
-      typing.level = 0; stopTyping();
-      tone({ freq: 110, dur: 2.0, type: 'sine', gain: 0.14 });
-      return sleep(900);
-    },
-
     daylight: function () {
       typing.level = 0; stopTyping();
       tone({ freq: 523, dur: 0.5, type: 'sine', gain: 0.10 });
@@ -356,7 +321,6 @@ ESC.fx = (function () {
 
   fx.has = function (name) { return !!EFFECTS[name]; };
   fx.effects = EFFECTS;
-  fx.toast = toast;
 
   /* The mute control. Built here rather than in index.html because it only
      exists if this layer is loaded. */

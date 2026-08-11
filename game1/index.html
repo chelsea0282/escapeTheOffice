@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FIRE(ESC)APE</title>
+<title>KING OF THE OFFICE</title>
 <link rel="stylesheet" href="theme.css">
 </head>
 <body>
@@ -17,12 +17,7 @@
   <!-- ---------- TITLE CARD ---------- -->
   <section id="title-card" class="fullscreen">
     <pre id="title-art"></pre>
-    <div id="title-by">
-      <p>By</p>
-      <p class="title-authors">CHELSEA HAN &amp; TIFFANY QUON</p>
-      <p class="title-date">Date: Aug 9, 2026 (latest ver)</p>
-    </div>
-    <p id="title-prompt" class="blink">PRESS ANY KEY TO CONNECT</p>
+    <p id="title-prompt" class="blink">PRESS ANY KEY TO BEGIN</p>
   </section>
 
   <!-- ---------- LOGIN ---------- -->
@@ -39,28 +34,7 @@
   <!-- ---------- MAIN GAMEPLAY ---------- -->
   <main id="game" class="hidden">
 
-    <!-- Top-left: photo ID + stats + world-building -->
-    <aside id="id-panel">
-      <div id="id-photo-frame">
-        <pre id="id-photo"></pre>
-      </div>
-      <p id="id-name">————</p>
-      <p id="id-role">PRODUCT MANAGER</p>
-
-      <div id="id-stats">
-        <p class="panel-heading">STATS</p>
-        <pre id="id-stat-list"></pre>
-      </div>
-
-      <div id="id-bio">
-        <p class="panel-heading">FILE</p>
-        <p id="id-bio-text"></p>
-      </div>
-
-      <button id="info-button" type="button">[ i ] PERSONNEL FILE</button>
-    </aside>
-
-    <!-- Right: gauges over the terminal -->
+    <!-- Just the terminal: story text + player input. No side panel. -->
     <div id="stage">
 
       <!-- "There is a line at the top of the terminal that shows the current
@@ -113,17 +87,6 @@
     </div>
   </div>
 
-  <!-- ---------- PERSONNEL FILE DRAWER ---------- -->
-  <div id="file-layer" class="hidden">
-    <div id="file-window">
-      <div id="file-titlebar">
-        <span>C:\PERSONNEL\APPENDIX</span>
-        <button id="file-close" type="button">[x]</button>
-      </div>
-      <div id="file-body"></div>
-    </div>
-  </div>
-
   <!-- Set-design layer: toasts, box fields, the mute toggle. Driven by js/fx.js -->
   <div id="fx-layer"></div>
 
@@ -140,6 +103,7 @@
 <script src="js/state.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/fx.js"></script>
+<script src="js/llm.js"></script>
 <script src="js/responder.js"></script>
 <script src="js/engine.js"></script>
 <script src="content/script.js"></script>

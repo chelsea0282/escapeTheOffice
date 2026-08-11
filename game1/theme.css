@@ -1,5 +1,5 @@
 /* ============================================================================
-   FIRE(ESC)APE — THE VISUAL SYSTEM
+   KING OF THE OFFICE — THE VISUAL SYSTEM
    ----------------------------------------------------------------------------
    This file owns EVERYTHING about how the game looks: colour, type, chrome,
    layout, CRT treatment, animation. Nothing in js/ sets an inline style; the
@@ -35,7 +35,6 @@
   --tracking:  0.04em;
 
   /* ---- metrics --------------------------------------------------------- */
-  --panel-w:   304px;
   --gutter:    18px;
   --border-w:  1px;
 
@@ -117,11 +116,7 @@ button:hover { color: var(--phosphor-bright); }
 }
 
 #vignette {
-  background: radial-gradient(
-    ellipse at center,
-    rgba(0,0,0,0) 42%,
-    rgba(0,0,0,var(--vignette-strength)) 100%
-  );
+  background: none;
 }
 
 #flicker {
@@ -154,15 +149,10 @@ button:hover { color: var(--phosphor-bright); }
 
 #title-art {
   color: var(--phosphor-bright);
-  font-size: clamp(6px, 1.15vw, 13px);
-  line-height: 1.1;
+  font-size: clamp(22px, 4.4vw, 42px);
+  letter-spacing: .1em;
   text-shadow: 0 0 14px rgba(51,255,102,.85);
 }
-
-#title-by { text-align: center; }
-#title-by p { margin: .18em 0; color: var(--phosphor-dim); }
-.title-authors { color: var(--phosphor) !important; letter-spacing: .18em; }
-.title-date { font-size: var(--fs-small); }
 
 #title-prompt {
   margin: 0;
@@ -200,28 +190,6 @@ button:hover { color: var(--phosphor-bright); }
 
 #login-body p { margin: .35em 0; }
 
-.field-line { display: flex; gap: .5ch; align-items: baseline; }
-.field-value { color: var(--phosphor-bright); }
-
-/* viewfinder */
-#viewfinder {
-  margin-top: 14px;
-  border: var(--border-w) solid var(--phosphor-faint);
-  padding: 10px;
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-#viewfinder pre { color: var(--phosphor-dim); font-size: 10px; line-height: 1; }
-#viewfinder.capturing pre { color: var(--phosphor-bright); }
-#viewfinder .vf-status { color: var(--amber-warn); font-size: var(--fs-small); }
-
-.snap-flash { animation: snap 380ms ease-out; }
-@keyframes snap {
-  0%   { background: rgba(182,255,204,.92); }
-  100% { background: transparent; }
-}
-
 /* ---- boot ------------------------------------------------------------ */
 
 #boot { align-items: flex-start; justify-content: flex-start; padding: 4vh 4vw; }
@@ -236,103 +204,22 @@ button:hover { color: var(--phosphor-bright); }
 
 /* ============================================================================
    MAIN GAMEPLAY LAYOUT
-   Brief: ID panel top-left; caption + progress above the terminal; terminal
-   from the middle to the right edge, taking up almost the rest of the page.
+   Just the terminal: caption + progress above it, story text and player
+   input inside it. No side panel — single column, full width.
    ========================================================================== */
 
 #game {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-columns: var(--panel-w) 1fr;
-  gap: var(--gutter);
+  display: flex;
   padding: var(--gutter);
   z-index: 10;
 }
 
-/* ---- ID panel -------------------------------------------------------- */
-
-#id-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-  overflow: hidden;
-}
-
-#id-photo-frame {
-  border: var(--border-w) solid var(--phosphor-dim);
-  padding: 6px;
-  background: var(--bg-panel);
-  align-self: flex-start;
-}
-
-#id-photo {
-  font-size: 9px;
-  line-height: .82;
-  color: var(--phosphor);
-  letter-spacing: 0;
-}
-
-#id-name {
-  margin: 0;
-  color: var(--phosphor-bright);
-  letter-spacing: .14em;
-  text-transform: uppercase;
-}
-
-#id-role {
-  margin: -8px 0 0;
-  font-size: var(--fs-small);
-  color: var(--phosphor-dim);
-  letter-spacing: .14em;
-}
-
-.panel-heading {
-  margin: 0 0 .2em;
-  font-size: var(--fs-small);
-  color: var(--phosphor-dim);
-  letter-spacing: .2em;
-}
-.panel-heading::after {
-  content: "";
-  display: block;
-  border-top: var(--border-w) solid var(--phosphor-faint);
-  margin-top: .2em;
-}
-
-#id-stat-list {
-  font-size: var(--fs-small);
-  line-height: 1.7;
-  color: var(--phosphor);
-}
-#id-stat-list .stat-key { color: var(--phosphor-dim); }
-
-#id-bio { min-height: 0; overflow: hidden; }
-#id-bio-text {
-  margin: 0;
-  font-size: var(--fs-small);
-  line-height: 1.6;
-  color: var(--phosphor-dim);
-}
-
-#info-button {
-  margin-top: auto;
-  align-self: flex-start;
-  font-size: var(--fs-small);
-  letter-spacing: .12em;
-  color: var(--phosphor-dim);
-  border: var(--border-w) solid var(--phosphor-faint);
-  padding: 5px 9px;
-}
-#info-button:hover {
-  color: var(--phosphor-bright);
-  border-color: var(--phosphor-dim);
-}
-
-/* ---- stage (gauges + terminal + input) -------------------------------- */
+/* ---- stage (caption/progress + terminal + input) ----------------------- */
 
 #stage {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -520,6 +407,23 @@ button:hover { color: var(--phosphor-bright); }
   50%      { opacity: 1; }
 }
 
+/* ---- waiting on the model's response to an open-input line ------------- */
+
+.line-thinking { display: flex; gap: 6px; }
+.thinking-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--phosphor-dim);
+  animation: thinking-blink 1.1s ease-in-out infinite;
+}
+.thinking-dot:nth-child(2) { animation-delay: .18s; }
+.thinking-dot:nth-child(3) { animation-delay: .36s; }
+@keyframes thinking-blink {
+  0%, 80%, 100% { opacity: .25; }
+  40%           { opacity: 1; }
+}
+
 /* ---- restart button ---------------------------------------------------- */
 
 .restart-wrap { margin: 1.2em 0 !important; }
@@ -634,7 +538,7 @@ button:hover { color: var(--phosphor-bright); }
    REPLAK.AI MODAL
    ========================================================================== */
 
-#modal-layer, #file-layer {
+#modal-layer {
   position: absolute;
   inset: 0;
   z-index: 800;
@@ -685,54 +589,6 @@ button:hover { color: var(--phosphor-bright); }
 #modal-hint b { color: var(--amber-warn); font-weight: normal; }
 
 /* ============================================================================
-   PERSONNEL FILE (appendix world-building)
-   ========================================================================== */
-
-#file-window {
-  width: min(860px, 92vw);
-  height: min(78vh, 720px);
-  display: flex;
-  flex-direction: column;
-  border: var(--border-w) solid var(--phosphor-dim);
-  background: var(--bg-panel);
-}
-
-#file-titlebar {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: var(--border-w) solid var(--phosphor-dim);
-  padding: 7px 11px;
-  font-size: var(--fs-small);
-  letter-spacing: .16em;
-  color: var(--phosphor-dim);
-}
-
-#file-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 18px 22px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--phosphor-faint) transparent;
-}
-#file-body::-webkit-scrollbar { width: 8px; }
-#file-body::-webkit-scrollbar-thumb { background: var(--phosphor-faint); }
-
-#file-body h3 {
-  margin: 1.4em 0 .3em;
-  font-size: var(--fs-base);
-  font-weight: normal;
-  color: var(--phosphor-bright);
-  letter-spacing: .12em;
-}
-#file-body h3:first-child { margin-top: 0; }
-#file-body p {
-  margin: 0 0 .6em;
-  font-size: var(--fs-small);
-  line-height: 1.7;
-  color: var(--phosphor-dim);
-}
-
-/* ============================================================================
    SET DESIGN — the effects that replace printed stage directions
    Driven by js/fx.js. See #fx-layer in index.html.
    ========================================================================== */
@@ -742,34 +598,6 @@ button:hover { color: var(--phosphor-bright); }
   inset: 0;
   pointer-events: none;
   z-index: 700;
-}
-
-/* ---- Slack-style notification ("You see Jerry's face pop up") ---------- */
-
-.fx-toast {
-  position: absolute;
-  top: 22px;
-  right: 26px;
-  min-width: 236px;
-  border: var(--border-w) solid var(--phosphor);
-  background: var(--bg-panel);
-  padding: 10px 14px;
-  box-shadow: 0 0 22px rgba(51, 255, 102, .30);
-  opacity: 0;
-  transform: translateX(26px);
-  transition: opacity 280ms ease, transform 280ms cubic-bezier(.2,.8,.3,1);
-}
-.fx-toast.in { opacity: 1; transform: translateX(0); }
-
-.fx-toast-title {
-  font-size: var(--fs-small);
-  letter-spacing: .2em;
-  color: var(--phosphor-bright);
-}
-.fx-toast-body {
-  font-size: var(--fs-small);
-  color: var(--phosphor-dim);
-  margin-top: .25em;
 }
 
 /* ---- the boxes you are asked to count --------------------------------- */
@@ -874,7 +702,6 @@ button:hover { color: var(--phosphor-bright); }
    ENDINGS
    ========================================================================== */
 
-#crt.ending-fail  { --phosphor: #ff4d4d; --phosphor-dim: #a02323; --phosphor-bright: #ffb3b3; }
 #crt.ending-good  { --phosphor: #b6ffcc; --phosphor-bright: #ffffff; }
 #crt.epilogue     { --phosphor: #7fd6ff; --phosphor-dim: #3d7fa3; --phosphor-bright: #d6f2ff;
                     --phosphor-faint: #14384a; }
@@ -897,14 +724,3 @@ button:hover { color: var(--phosphor-bright); }
   100% { opacity: 0; transform: translateY(-40px); }
 }
 
-/* ============================================================================
-   NARROW SCREENS — stack the panel above the stage
-   ========================================================================== */
-
-@media (max-width: 900px) {
-  #game { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  #id-panel { flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 14px; }
-  #id-bio { display: none; }
-  #info-button { margin-top: 0; }
-  #gauges { grid-template-columns: 1fr; gap: 8px; }
-}

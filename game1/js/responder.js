@@ -4,7 +4,7 @@
    The brief calls for a model at each <Open input response:>. This build has
    none, so this file does the job deterministically.
 
-   Its job in FIRE(ESC)APE is the opposite of a normal dialogue system. It does
+   Its job in KING OF THE OFFICE is the opposite of a normal dialogue system. It does
    not judge the player. Per the doc:
 
        "No matter what the player inputs, it should be incorporated in the
@@ -215,13 +215,39 @@ ESC.responder = (function () {
      ----------------------------------------------------------------------
      ctx = { scene: 's1'|'s2'|'s3'|'s4'|'s5' }
 
-     Returns:
+     Returns a Promise<verdict>:
        intent     the register that was read
        lines      [{ speaker, text, kind }] — what the office says back
        resolve    always true; one turn, then back on script (doc's rule)
        fallback   true only for nonsense: show the A/B options instead
        praise     whether this counted as the office rewarding you
+
+     Nonsense is still filtered locally (cheap, no need to spend a model call
+     on gibberish). Everything else goes to ESC.llm, which calls Claude
+     through the Netlify function. Two distinct "give up" paths land on the
+     same fallback verdict:
+       - local nonsense filter, before ever calling the model
+       - the model's own cannot_justify flag (doc: "if an action absolutely
+         cannot be justified, show the pre-set options") — for input that
+         passes the local filter but the model itself can't spin
+     If the call fails outright — offline, no API key configured yet,
+     function not deployed — this falls back to the scripted pools in
+     content/responses.js so the game still plays.
      ==================================================================== */
+
+  function nonsenseVerdict(intent) {
+    return {
+      intent: intent,
+      resolve: false,
+      fallback: true,            /* -> the scene falls back to A/B */
+      praise: false,
+      lines: [{
+        speaker: 'REPLAK.AI SYSTEM',
+        kind: 'system',
+        text: ESC.responses.pick('shared', 'nonsense', ESC.state.ledger.openInputs.length)
+      }]
+    };
+  }
 
   function evaluate(raw, ctx) {
     var scene = ctx.scene;
@@ -230,30 +256,34 @@ ESC.responder = (function () {
     ESC.state.noteInput(raw);
 
     if (intent === 'nonsense') {
-      return {
-        intent: 'nonsense',
-        resolve: false,
-        fallback: true,          /* -> the scene falls back to A/B */
-        praise: false,
-        lines: [{
-          speaker: 'REPLAK.AI SYSTEM',
-          kind: 'system',
-          text: ESC.responses.pick('shared', 'nonsense', ESC.state.ledger.openInputs.length)
-        }]
-      };
+      return Promise.resolve(nonsenseVerdict('nonsense'));
     }
 
-    var lines = ESC.responses.reply(scene, intent, ESC.state.ledger.openInputs.length);
+    if (ESC.fx && ESC.fx.play) ESC.fx.play('typingStart');
 
-    ESC.state.bump('praiseCount');
-
-    return {
-      intent: intent,
-      resolve: true,             /* one turn, then the script continues */
-      fallback: false,
-      praise: true,
-      lines: lines
-    };
+    return ESC.llm.reply(raw, scene)
+      .then(function (result) {
+        if (result.cannotJustify) return nonsenseVerdict(intent);
+        ESC.state.bump('praiseCount');
+        return {
+          intent: intent,
+          resolve: true,          /* one turn, then the script continues */
+          fallback: false,
+          praise: true,
+          lines: result.lines
+        };
+      })
+      .catch(function (err) {
+        console.warn('[ESC] LLM reply failed, falling back to scripted response:', err);
+        ESC.state.bump('praiseCount');
+        return {
+          intent: intent,
+          resolve: true,
+          fallback: false,
+          praise: true,
+          lines: ESC.responses.reply(scene, intent, ESC.state.ledger.openInputs.length)
+        };
+      });
   }
 
   return {

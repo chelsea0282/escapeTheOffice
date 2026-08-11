@@ -1,7 +1,7 @@
 /* ============================================================================
    CONTENT — THE SCRIPT
    ----------------------------------------------------------------------------
-   FIRE(ESC)APE, transcribed from brainstorm.pdf (Aug 9 2026 revision).
+   KING OF THE OFFICE, transcribed from brainstorm.pdf and kept in sync with it.
    This file is data: every scene is an array of beats js/engine.js performs.
 
    Beat types (see engine.handlers):
@@ -18,8 +18,9 @@
 
    THE PREMISE: Jamie wants to get fired. She cannot. Every choice, including
    the deliberately awful ones, is metabolised by the office into praise. The
-   two SUDDEN DEATH branches are the model-employee answers — picking one ends
-   the run early, because here, being a good employee is how you lose.
+   two Sudden Ending branches are the model-employee answers — picking one
+   skips straight to the epilogue, because here, being a good employee is
+   how you lose.
    ========================================================================== */
 
 window.ESC = window.ESC || {};
@@ -34,88 +35,19 @@ ESC.script = (function () {
 
   S.login = function () {
     var ui = ESC.ui;
-    var eng = ESC.engine;
 
     ui.show('login');
     ui.loginClear();
 
+    /* No name prompt, no camera — per the doc, login goes straight from the
+       title card to this system message, then boots into gameplay. The
+       protagonist is always Jamie: ESC.state.ledger.name stays unset, and
+       the [player] token already falls back to 'Jamie' when it is. */
     return ui.loginType('REPLAK.AI SYSTEM:', 'sys-label', 26)
-      .then(function () { return ui.loginType('Please authenticate your credentials:', null, 22); })
-      .then(function () { return ui.sleep(500); })
-
-      /* ---- name prompt ------------------------------------------------ */
-      .then(function () {
-        var line = ui.loginPrint('', 'field-line');
-        var label = document.createElement('span');
-        label.textContent = 'Please type your name: ';
-        var value = document.createElement('span');
-        value.className = 'field-value';
-        line.appendChild(label);
-        line.appendChild(value);
-        return eng.readLine({ target: value, maxLen: 24 });
-      })
-      .then(function (name) {
-        ESC.state.record('name', name || 'Jamie');
-        return ui.sleep(600);
-      })
-
-      /* ---- camera access ---------------------------------------------- */
-      .then(function () {
-        return ui.showSystemPopup(
-          'REPLAK.AI would like to access your camera.\n\n' +
-          'Imaging is used to verify presence, attention, and general\n' +
-          'workplace disposition. Declining is permitted and recorded.',
-          'CAMERA ACCESS REQUEST'
-        );
-      })
-      .then(function () {
-        ui.loginPrint('> camera access granted', 'sys-label');
-        ESC.state.record('cameraConsent', 'allowed');
-
-        /* The viewfinder. It does not ask a second time. */
-        var vf = document.createElement('div');
-        vf.id = 'viewfinder';
-        var pre = document.createElement('pre');
-        pre.textContent = [
-          '  ░░▒▒▒▒▒▒▒▒░░  ',
-          ' ░▒▒▒▒▒▒▒▒▒▒▒▒░ ',
-          '░▒▒▒  ▒▒  ▒▒▒▒▒░',
-          '░▒▒▒▒▒▒▒▒▒▒▒▒▒▒░',
-          '░▒▒▒▒ ▒▒▒▒ ▒▒▒▒░',
-          ' ░▒▒▒▒▒▒▒▒▒▒▒▒░ ',
-          '  ░░▒▒▒▒▒▒▒▒░░  '
-        ].join('\n');
-        var status = document.createElement('span');
-        status.className = 'vf-status';
-        status.textContent = 'LIVE';
-        vf.appendChild(pre);
-        vf.appendChild(status);
-        ui.loginNode().appendChild(vf);
-
-        return ui.sleep(1000)                       /* the brief's 1-second pause */
-          .then(function () {
-            status.textContent = 'CAPTURING';
-            vf.classList.add('capturing');
-            return ui.sleep(240);
-          })
-          .then(function () {
-            vf.classList.add('snap-flash');
-            ESC.fx.play('shutter');
-            status.textContent = 'CAPTURED';
-            ui.setPortrait(ui.makePortrait(ESC.state.ledger.name + '|cam'));
-            return ui.sleep(900);
-          });
-      })
-
-      /* ---- the note in the system -------------------------------------- */
-      .then(function () {
-        ui.loginPrint('');
-        return ui.loginType('REPLAK.AI SYSTEM:', 'sys-label', 26);
-      })
       .then(function () {
         return ui.loginType(
           ESC.state.interpolate(
-            'Welcome back [player]. Your afternoon break was longer than ' +
+            'Welcome back, [player]. Your afternoon break was longer than ' +
             'usual. I\'ll make a note in the system.'
           ), null, 22);
       })
@@ -127,7 +59,6 @@ ESC.script = (function () {
         return ui.bootSequence('REPLAK.AI  ///  SESSION RESTORED', 3600);
       })
       .then(function () {
-        ui.renderIdPanel();
         ui.show('game');
         ui.clearTerminal();
         return ui.sleep(400);
@@ -148,8 +79,8 @@ ESC.script = (function () {
       'You\'ve already spent 50 hours at the office this week. You got into ' +
       'the office at 8:00AM today and you were the last one in.' },
     { type: 'narrate', text:
-      'Project Porcupine is going sideways. Heck, the company is going ' +
-      'sideways. You sense the quiet tension permeating the office. Everyone ' +
+      'Project Porcupine is going sideways, but at least it launched this ' +
+      'morning. You sense the quiet tension permeating the office. Everyone ' +
       'else is silently, but furiously typing around you.' },
 
     { type: 'fx', name: 'typingIntensify' },
@@ -200,6 +131,45 @@ ESC.script = (function () {
           { type: 'narrate', text: 'Guess you have to make your own coffee.' },
           { type: 'narrate', text: 'You walk over to PHS.' }
         ]
+      },
+      {
+        key: 'C',
+        label: 'Say something else.',
+        echo: false,
+        openEnded: true,
+        record: { coffee: 'open' },
+        then: [
+          { type: 'narrate', text: '\nYou consider your options.' },
+          { type: 'openInput', scene: 'tutorial',
+            hint: 'say anything at all',
+            fallback: [
+              { key: 'A', label: 'Go to the PHS and make your own coffee.',
+                record: { coffee: 'made' },
+                locate: ['4:01PM', 'The Office Kitchen, Second Floor'],
+                then: [
+                  { type: 'freshScreen' },
+                  { type: 'narrate', text: 'You walk to PHS. Your coworker Jerry notices.' },
+                  { type: 'say', speaker: 'Jerry', text:
+                    'I bet you\'re getting coffee to stay as efficient and ' +
+                    'effective as you always are, [player]! That\'s what I ' +
+                    'like about you. By the way, I put in a good word for ' +
+                    'your promotion!' }
+                ] },
+              { key: 'B', label: 'Steal Jerry\'s drink.',
+                record: { coffee: 'stole' },
+                locate: ['4:01PM', 'Jerry\'s Desk, Second Floor'],
+                then: [
+                  { type: 'freshScreen' },
+                  { type: 'narrate', text:
+                    'You head over to Jerry\'s desk. He\'s gone. You spot his ' +
+                    'thermos he\'s been sipping out of all day. You take a ' +
+                    'sip, and it\'s bad. Is this even coffee? You quietly put ' +
+                    'it back on his desk.' },
+                  { type: 'narrate', text: 'Guess you have to make your own coffee.' },
+                  { type: 'narrate', text: 'You walk over to PHS.' }
+                ] }
+            ] }
+        ]
       }
     ]},
 
@@ -221,9 +191,7 @@ ESC.script = (function () {
     { type: 'narrate', text: 'You talk about the weather.' },
     { type: 'narrate', text:
       'Rachel continues chatting while the coffee machine cranks out your ' +
-      'quadruple shot cappuccino with protein milk. Her older child\'s soccer ' +
-      'season is coming up. Her younger child is about to start learning ' +
-      'Spanish in pre-preschool.' },
+      'quadruple shot cappuccino with protein milk.' },
     { type: 'narrate', text: 'The machine beeps. Your coffee is ready.' },
     { type: 'narrate', text:
       'You and Rachel start to head back to your desks. As Rachel gathers the ' +
@@ -242,7 +210,7 @@ ESC.script = (function () {
         key: 'A',
         label: 'Oh, sure.',
         record: { carriedCoffee: 'yes' },
-        suddenDeath: 'coffee',
+        suddenEnding: 'coffee',
         then: [
           { type: 'freshScreen' },
           { type: 'say', speaker: 'Rachel', text:
@@ -267,15 +235,39 @@ ESC.script = (function () {
       },
       {
         key: 'C',
-        label: 'I wish I could.',
-        record: { carriedCoffee: 'wish' },
+        label: 'Say something else.',
+        echo: false,
+        openEnded: true,
+        record: { carriedCoffee: 'open' },
         then: [
-          { type: 'freshScreen' },
-          { type: 'narrate', text: 'Rachel blinks, but quickly regains her composure.' },
-          { type: 'say', speaker: 'Rachel', text: 'Oh. I guess I wish you could too!' },
-          { type: 'narrate', text:
-            'You walk back with Rachel, who spills her coffee all over the ' +
-            'floor just before reaching her desk.' }
+          { type: 'narrate', text: '\nRachel waits.' },
+          { type: 'openInput', scene: 'carryCoffee',
+            hint: 'say anything at all',
+            fallback: [
+              { key: 'A', label: 'Oh, sure.',
+                record: { carriedCoffee: 'yes' },
+                suddenEnding: 'coffee',
+                then: [
+                  { type: 'freshScreen' },
+                  { type: 'say', speaker: 'Rachel', text:
+                    'Thanks, [player]! This was all I needed to see from ' +
+                    'you. This was the only Replak Core Value (RCV) that ' +
+                    'you hadn\'t exemplified within the last 90 days: We ' +
+                    'carry each other\'s coffee. Congratulations on your ' +
+                    'promotion to Senior Product Manager.' }
+                ] },
+              { key: 'B', label: 'Sorry, no.',
+                record: { carriedCoffee: 'no' },
+                then: [
+                  { type: 'freshScreen' },
+                  { type: 'say', speaker: 'Rachel', text:
+                    'Oh okay, that\'s understandable. I appreciate you ' +
+                    'letting me know.' },
+                  { type: 'narrate', text:
+                    'You walk back with Rachel, who spills her coffee all ' +
+                    'over the floor just before reaching her desk.' }
+                ] }
+            ] }
         ]
       }
     ]},
@@ -374,6 +366,7 @@ ESC.script = (function () {
         key: 'C',
         label: 'Write your own reply.',
         echo: false,
+        openEnded: true,
         record: { emailChoice: 'open' },
         then: [
           { type: 'narrate', text: '\nYou start typing.' },
@@ -427,7 +420,7 @@ ESC.script = (function () {
         label: 'This is related to the feature I launched this morning.',
         echo: false,
         record: { blameChoice: 'owned' },
-        suddenDeath: 'ownedIt',
+        suddenEnding: 'ownedIt',
         then: [
           { type: 'freshScreen' },
           { type: 'say', speaker: '[player]', text:
@@ -468,6 +461,7 @@ ESC.script = (function () {
         key: 'C',
         label: 'Say something else.',
         echo: false,
+        openEnded: true,
         record: { blameChoice: 'open' },
         then: [
           { type: 'narrate', text: '\nRachel waits.' },
@@ -476,7 +470,7 @@ ESC.script = (function () {
             fallback: [
               { key: 'A', label: 'This is related to the feature I launched this morning.',
                 record: { blameChoice: 'owned' },
-                suddenDeath: 'ownedIt',
+                suddenEnding: 'ownedIt',
                 then: [
                   { type: 'say', speaker: 'Rachel', text:
                     'That\'s amazing! Worthy of a Replak Core Value named ' +
@@ -545,6 +539,7 @@ ESC.script = (function () {
         key: 'C',
         label: 'Suggest something else.',
         echo: false,
+        openEnded: true,
         record: { sabotage: 'open' },
         then: [
           { type: 'narrate', text: '\nRachel leans forward.' },
@@ -620,6 +615,7 @@ ESC.script = (function () {
         key: 'C',
         label: 'Say something else to Jerry.',
         echo: false,
+        openEnded: true,
         record: { jerryDoubt: 'open' },
         then: [
           { type: 'narrate', text: '\nJerry waits, very close to your ear.' },
@@ -657,9 +653,9 @@ ESC.script = (function () {
     { type: 'locate', time: '5:02PM', location: 'Your Desk, Second Floor' },
 
     { type: 'narrate', text:
-      'Somehow, with the blessing of Replak.ai shareholders — you, Rachel, and ' +
-      'Jerry manage to pull it off by the end of the meeting: there is now ' +
-      'malware installed on the competitor\'s computers.' },
+      'Somehow, with the blessing of all Replak.ai shareholders, you, Rachel, ' +
+      'and Jerry manage to pull it off by the end of the meeting: there is ' +
+      'now malware installed on the competitor\'s computers.' },
 
     { type: 'say', speaker: 'Rachel', text:
       'We did it!!! Way to go, both of you. Proud to be your manager. I think ' +
@@ -724,6 +720,7 @@ ESC.script = (function () {
         key: 'C',
         label: 'Answer in your own words.',
         echo: false,
+        openEnded: true,
         record: { ceoAnswer: 'open' },
         then: [
           { type: 'narrate', text: '\nThe cursor blinks in the reply box.' },
@@ -778,7 +775,7 @@ ESC.script = (function () {
     { type: 'wait', ms: 700 },
 
     { type: 'narrate', text:
-      'Jerry walks out sleepily from the bedroom all disheveled.' },
+      'Jerry wanders into the kitchen sleepily.' },
 
     { type: 'say', speaker: 'Jerry', text: '[player], where did you go?' },
 
@@ -792,20 +789,6 @@ ESC.script = (function () {
     { type: 'wait', ms: 900 },
     { type: 'marker', text: 'THE END' },
     { type: 'restart', label: '[ PLAY AGAIN ]' }
-  ];
-
-  /* ======================================================================
-     SUDDEN DEATH — choosing the model-employee answer ends the run early
-     ==================================================================== */
-
-  S.suddenDeath = [
-    { type: 'call', always: true, fn: function () { ESC.ui.setMood('ending-fail'); } },
-    { type: 'fx', name: 'flatline', always: true },
-    { type: 'narrate', always: true, text:
-      'That didn\'t go as planned…looks like you\'ll have to get fired another day.' },
-    { type: 'wait', ms: 800, always: true },
-    { type: 'marker', text: 'SUDDEN DEATH', always: true },
-    { type: 'restart', label: '[ PLAY AGAIN ]', always: true }
   ];
 
   return S;

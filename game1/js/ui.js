@@ -35,13 +35,12 @@ ESC.ui = (function () {
 
   ui.init = function () {
     ['crt','title-card','title-art','title-prompt','login','login-brand',
-     'login-body','boot','boot-field','game','id-photo','id-name','id-role',
-     'id-stat-list','id-bio-text','info-button','caption-bar','caption-text',
+     'login-body','boot','boot-field','game','caption-bar','caption-text',
      'progress','terminal',
      'terminal-scroll','choice-panel','choice-question','choice-options',
      'input-bar','input-prompt','input-ghost','input-typed',
      'input-caret','input-hint','modal-layer','modal-title','modal-body',
-     'modal-close','modal-hint','file-layer','file-window','file-body','file-close'
+     'modal-close','modal-hint'
     ].forEach(function (id) {
       el[id] = $(id);
     });
@@ -58,13 +57,6 @@ ESC.ui = (function () {
     });
     el.terminal.addEventListener('click', function () { ui.skipRequested = true; });
 
-    /* Personnel file drawer */
-    el['info-button'].addEventListener('click', ui.openFile);
-    el['file-close'].addEventListener('click', ui.closeFile);
-    el['file-layer'].addEventListener('click', function (e) {
-      if (e.target === el['file-layer']) ui.closeFile();
-    });
-
     ESC.state.onChange(function (what) {
       if (what === 'locate'   || what === 'reset') ui.syncCaption();
       if (what === 'progress' || what === 'reset') ui.syncProgress();
@@ -76,15 +68,8 @@ ESC.ui = (function () {
      ==================================================================== */
 
   ui.art = {
-    /* FIRE(ESC)APE — parens are real parens, 4 cells wide; letters are 8. */
-    title: [
-      '███████╗██╗██████╗ ███████╗ ██╗███████╗███████╗ ██████╗██╗   █████╗ ██████╗ ███████╗',
-      '██╔════╝██║██╔══██╗██╔════╝██╔╝██╔════╝██╔════╝██╔════╝╚██╗ ██╔══██╗██╔══██╗██╔════╝',
-      '█████╗  ██║██████╔╝█████╗  ██║ █████╗  ███████╗██║      ██║ ███████║██████╔╝█████╗  ',
-      '██╔══╝  ██║██╔══██╗██╔══╝  ██║ ██╔══╝  ╚════██║██║      ██║ ██╔══██║██╔═══╝ ██╔══╝  ',
-      '██║     ██║██║  ██║███████╗╚██╗███████╗███████║╚██████╗██╔╝ ██║  ██║██║     ███████╗',
-      '╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═╝╚══════╝╚══════╝ ╚═════╝╚═╝  ╚═╝  ╚═╝╚═╝     ╚══════╝'
-    ].join('\n'),
+    /* Plain monospace title — no block-letter art. */
+    title: 'KING OF THE OFFICE',
 
     replak: [
       '██████╗ ███████╗██████╗ ██╗      █████╗ ██╗  ██╗    █████╗ ██╗',
@@ -222,6 +207,28 @@ ESC.ui = (function () {
     return p;
   };
 
+  /* The wait for the model's response to an open-input line. A pulsing
+     "..." row, appended and removed like any other line — there's no fixed
+     spot for it in index.html. */
+  ui.showThinking = function () {
+    ui.hideThinking();
+    var p = document.createElement('p');
+    p.id = 'thinking-line';
+    p.className = 'line-thinking';
+    for (var i = 0; i < 3; i++) {
+      var dot = document.createElement('span');
+      dot.className = 'thinking-dot';
+      p.appendChild(dot);
+    }
+    el['terminal-scroll'].appendChild(p);
+    scrollDown();
+  };
+
+  ui.hideThinking = function () {
+    var p = el['terminal-scroll'].querySelector('#thinking-line');
+    if (p && p.parentNode) p.parentNode.removeChild(p);
+  };
+
   ui.printHTML = function (html, kind) {
     var p = document.createElement('p');
     p.className = 'line-' + (kind || 'report');
@@ -343,7 +350,6 @@ ESC.ui = (function () {
       function done(e) {
         if (e.type === 'keydown' && (e.metaKey || e.ctrlKey || e.altKey)) return;
         if (!el['modal-layer'].classList.contains('hidden')) return;
-        if (!el['file-layer'].classList.contains('hidden')) return;
         document.removeEventListener('keydown', done);
         document.removeEventListener('click', done);
         if (p.parentNode) p.parentNode.removeChild(p);
@@ -373,7 +379,7 @@ ESC.ui = (function () {
 
   /* ======================================================================
      CAPTION BAR + PROGRESS
-     FIRE(ESC)APE has no resource gauges. The clock is a narrative caption the
+     KING OF THE OFFICE has no resource gauges. The clock is a narrative caption the
      script sets, and progress is how far through the scenes you are.
      ==================================================================== */
 
@@ -395,76 +401,11 @@ ESC.ui = (function () {
     var fill = el.progress.querySelector('.progress-fill');
     var val  = el.progress.querySelector('.progress-value');
     fill.style.width = ESC.state.progressFraction() * 100 + '%';
-    val.textContent = 'SCENE ' + Math.min(ESC.state.sceneIndex + 1, ESC.state.sceneTotal) +
+    val.textContent = 'SCENARIO ' + Math.min(ESC.state.sceneIndex + 1, ESC.state.sceneTotal) +
                       ' / ' + ESC.state.sceneTotal;
   };
 
   ui.syncChrome = function () { ui.syncCaption(); ui.syncProgress(); };
-
-  /* ======================================================================
-     ID PANEL
-     ==================================================================== */
-
-  ui.renderIdPanel = function () {
-    var w = ESC.world.player;
-    el['id-name'].textContent = ESC.state.ledger.name || '————';
-    el['id-role'].textContent = w.role;
-    el['id-bio-text'].textContent = w.bio;
-
-    var lines = w.stats.map(function (pair) {
-      var key = pair[0];
-      var dots = new Array(Math.max(2, 13 - key.length)).join('.');
-      return key + ' ' + dots + ' ' + pair[1];
-    });
-    /* Live rows, appended after the static ones. */
-    lines.push('BREAK ....... ' +
-      (ESC.state.ledger.breakTaken === true  ? 'Taken (logged)' :
-       ESC.state.ledger.breakTaken === false ? 'Declined'       : '—'));
-    lines.push('IMAGING ..... ' +
-      (ESC.state.ledger.cameraConsent === 'denied' ? 'Refused' : 'On file'));
-
-    el['id-stat-list'].textContent = lines.join('\n');
-  };
-
-  ui.setPortrait = function (art) {
-    el['id-photo'].textContent = art;
-  };
-
-  /* ======================================================================
-     PROCEDURAL ASCII PORTRAIT (simulated camera capture)
-     Deterministic: the same name always produces the same face.
-     ==================================================================== */
-
-  ui.makePortrait = function (seedText) {
-    var seed = 0;
-    for (var i = 0; i < seedText.length; i++) {
-      seed = (seed * 31 + seedText.charCodeAt(i)) >>> 0;
-    }
-    function pick(arr) {
-      seed = (seed * 1103515245 + 12345) >>> 0;
-      return arr[(seed >>> 16) % arr.length];
-    }
-
-    var hair  = pick(['▓▓▓▓▓▓▓▓▓▓▓▓', '████████████', '▒▓▓▓▓▓▓▓▓▓▓▒', '░▒▓▓▓▓▓▓▓▓▒░']);
-    var brow  = pick(['▀▀    ▀▀', '▄▄    ▄▄', '══    ══', '▬▬    ▬▬']);
-    var eyes  = pick(['◉    ◉', '●    ●', '◯    ◯', '▣    ▣']);
-    var nose  = pick(['╵', '│', '¡', 'ⵌ']);
-    var mouth = pick(['▔▔▔▔▔▔', '──────', '╰────╯', '▁▁▁▁▁▁', '══════']);
-    var shade = pick(['░', '▒', '·']);
-
-    return [
-      '  ' + hair + '  ',
-      ' ▓' + shade + '          ' + shade + '▓ ',
-      '▓' + shade + '            ' + shade + '▓',
-      '▓   ' + brow + '   ▓',
-      '▓   ' + eyes + '    ▓',
-      '▓' + shade + '      ' + nose + '      ' + shade + '▓',
-      '▓' + shade + '   ' + mouth + '   ' + shade + '▓',
-      ' ▓' + shade + '          ' + shade + '▓ ',
-      '  ▀▀▀▀▀▀▀▀▀▀▀▀  ',
-      ' ░▒▓ CAPTURED ▓▒░'
-    ].join('\n');
-  };
 
   /* ======================================================================
      REPLAK.AI MODAL — must be dismissed with 'x'
@@ -494,22 +435,6 @@ ESC.ui = (function () {
       document.addEventListener('keydown', onKey, true);
       el['modal-close'].addEventListener('click', done);
     });
-  };
-
-  /* ======================================================================
-     PERSONNEL FILE DRAWER (the brief's "information button")
-     ==================================================================== */
-
-  ui.openFile = function () {
-    var html = ESC.world.entries.map(function (e) {
-      return '<h3>' + e.title + '</h3><p>' + e.text + '</p>';
-    }).join('');
-    el['file-body'].innerHTML = html;
-    el['file-layer'].classList.remove('hidden');
-  };
-
-  ui.closeFile = function () {
-    el['file-layer'].classList.add('hidden');
   };
 
   /* ======================================================================
@@ -568,8 +493,6 @@ ESC.ui = (function () {
       })();
     });
   };
-
-  ui.loginNode = function () { return el['login-body']; };
 
   /* ======================================================================
      BOOT FIELD — 0s and 1s slowly turning into English words

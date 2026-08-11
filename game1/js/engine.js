@@ -33,9 +33,8 @@ ESC.engine = (function () {
 
   function captureKeys(onKey) {
     function handler(e) {
-      /* Let the Replak.AI modal and the personnel file take precedence. */
+      /* Let the Replak.AI modal take precedence. */
       if (!document.getElementById('modal-layer').classList.contains('hidden')) return;
-      if (!document.getElementById('file-layer').classList.contains('hidden')) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       onKey(e);
     }
@@ -105,7 +104,10 @@ ESC.engine = (function () {
   }
 
   /* ======================================================================
-     2. readLine() — plain free typing, used for the name prompt
+     2. readLine() — plain free typing; used by openInput() below for the
+        open-text prompt. The optional `target`/`maxLen` options exist for a
+        bounded single-field entry (echoing into a specific DOM node) —
+        unused today, but kept since it's generic enough to reuse.
      ==================================================================== */
 
   function readLine(opts) {
@@ -162,17 +164,35 @@ ESC.engine = (function () {
      "type out one of multiple options" and A/B selection.
      ==================================================================== */
 
+  /* A pending open-text response, staged by choose() when the player typed
+     straight past the A/B menu instead of selecting the open-input option
+     first. The very next openInput() call consumes and clears it — see
+     openInput() below. */
+  var stagedInput = null;
+
   function choose(options, opts) {
     opts = opts || {};
     var u = U();
+
+    /* At most one option per choice is the open-text branch (script.js marks
+       it `openEnded: true`). If present, the player can either select it
+       like any other option, or just start typing their own response and
+       press ENTER — no need to select it first. */
+    var openOption = null;
+    for (var k = 0; k < options.length; k++) {
+      if (options[k].openEnded) { openOption = options[k]; break; }
+    }
+    var pickableKeys = options
+      .filter(function (o) { return o !== openOption; })
+      .map(function (o) { return o.key; });
 
     /* Options render in the panel BELOW the terminal, not in the narration. */
     u.showChoices(opts.question, options);
 
     u.showInput('>', true);
-    u.setHint('type ' +
-      options.map(function (o) { return o.key; }).join(' / ') +
-      ', or type the option out in full, then ENTER');
+    u.setHint(openOption
+      ? 'type ' + pickableKeys.join(' / ') + ', or write your own response, then ENTER'
+      : 'type ' + pickableKeys.join(' / ') + ', or type the option out in full, then ENTER');
 
     var typed = '';
 
@@ -198,8 +218,18 @@ ESC.engine = (function () {
         if (e.key === 'Enter') {
           e.preventDefault();
           var picked = match(typed);
+
+          /* Nothing matched a preset option — if there's an open-text
+             branch and they actually typed something, treat that text as
+             their answer to it directly, instead of making them retype it
+             after separately selecting the option. */
+          if (!picked && openOption && typed.trim()) {
+            picked = openOption;
+            stagedInput = typed;
+          }
+
           if (!picked) {
-            u.setHint('pick one of the options below');
+            u.setHint('pick one of the options below, or write your own response');
             return;
           }
           release();
@@ -209,9 +239,12 @@ ESC.engine = (function () {
           /*
              Record what ends up happening. The option list itself never
              reaches the terminal; the chosen line does, unless the scene
-             already narrates it (echo: false).
+             already narrates it (echo: false). The auto-staged open-text
+             case always has echo: false in practice (its own then: block
+             echoes the typed line via openInput), but guard anyway so a
+             mislabeled scene can't double-print.
           */
-          if (picked.echo !== false) {
+          if (picked.echo !== false && picked !== openOption) {
             u.printLine('> ' + ESC.state.interpolate(picked.echo || picked.label), 'player');
           }
           resolve(picked);
@@ -239,36 +272,50 @@ ESC.engine = (function () {
      The free-text moment. This is where the brief would call an LLM; here it
      calls ESC.responder, which returns the same shape of verdict.
 
-     Two rules from the doc's Gameplay notes are enforced here:
+     Three rules from the doc's Gameplay notes are enforced here:
        * "within 1 turn, put them back on the script" — every verdict that is
          not nonsense resolves immediately and the scene continues.
        * "if an action can't be justified, give players only options of A or B
          that would get them back on track" — nonsense falls back to the
          scene's multiple-choice options.
+       * the player can type their response directly at the A/B/C menu,
+         without selecting the open-text option first — choose() stages that
+         typed text in `stagedInput`, and this is where it's picked up
+         instead of prompting for input a second time.
      ==================================================================== */
 
   function openInput(cfg) {
     var u = U();
 
+    function respond(input) {
+      u.printLine(input, 'player');
+      u.showThinking();
+
+      return ESC.responder.evaluate(input, { scene: cfg.scene }).then(function (verdict) {
+        u.hideThinking();
+        return speak(verdict.lines).then(function () {
+          /* Unparseable: hand them the approved options instead. */
+          if (verdict.fallback && cfg.fallback && cfg.fallback.length) {
+            return choose(cfg.fallback, { question: cfg.fallbackQuestion }).then(function (picked) {
+              return applyChoice(picked);
+            });
+          }
+          return null;
+        });
+      });
+    }
+
+    if (stagedInput !== null) {
+      var pre = stagedInput;
+      stagedInput = null;
+      return respond(pre);
+    }
+
     return readLine({
       prompt: '>',
       glow: true,
       hint: cfg.hint || 'type your response and press ENTER'
-    }).then(function (input) {
-      u.printLine(input, 'player');
-
-      var verdict = ESC.responder.evaluate(input, { scene: cfg.scene });
-
-      return speak(verdict.lines).then(function () {
-        /* Unparseable: hand them the approved options instead. */
-        if (verdict.fallback && cfg.fallback && cfg.fallback.length) {
-          return choose(cfg.fallback, { question: cfg.fallbackQuestion }).then(function (picked) {
-            return applyChoice(picked);
-          });
-        }
-        return null;
-      });
-    });
+    }).then(respond);
   }
 
   /* Print a list of { speaker, text, kind } lines in order. */
@@ -293,9 +340,9 @@ ESC.engine = (function () {
     if (picked.fx) ESC.fx.play(picked.fx);
     var chain = picked.then ? runScene(picked.then) : Promise.resolve();
     return chain.then(function () {
-      /* Choosing the model-employee answer ends the run. */
-      if (picked.suddenDeath) {
-        ESC.state.suddenDeath(picked.suddenDeath);
+      /* Choosing the model-employee answer skips straight to the epilogue. */
+      if (picked.suddenEnding) {
+        ESC.state.suddenEnding(picked.suddenEnding);
       }
       return null;
     });
@@ -445,7 +492,7 @@ ESC.engine = (function () {
     var chain = Promise.resolve();
     beats.forEach(function (b) {
       chain = chain.then(function () {
-        if (ESC.state.over && !b.always) return null;   // sudden death stops the scene
+        if (ESC.state.over && !b.always) return null;   // a sudden ending stops the scene
         var h = handlers[b.type];
         if (!h) {
           console.warn('[engine] unknown beat type:', b.type, b);

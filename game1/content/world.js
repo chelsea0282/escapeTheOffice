@@ -10,7 +10,7 @@
         player who references real things gets a more specific reply.
 
    The brainstorm doc no longer carries an appendix, so this was rewritten to
-   match the current script. Nothing here should contradict FIRE(ESC)APE.
+   match the current script. Nothing here should contradict KING OF THE OFFICE.
    ========================================================================== */
 
 window.ESC = window.ESC || {};

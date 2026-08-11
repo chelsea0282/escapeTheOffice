@@ -8,6 +8,10 @@ ESC.main = (function () {
 
   var started = false;
 
+  /* Dev toggle: skip the credentials/camera login sequence and boot
+     straight into gameplay. Flip off before shipping. */
+  var SKIP_INTRO = true;
+
   /* ======================================================================
      THE RUN
      ----------------------------------------------------------------------
@@ -68,7 +72,8 @@ ESC.main = (function () {
     for (var i = index; i < scenes.length; i++) {
       (function (name, idx) {
         chain = chain.then(function () {
-          /* A SUDDEN DEATH ends the run — stop advancing. */
+          /* A Sudden Ending stops normal advancement — skip straight to the
+             epilogue below instead of playing the remaining scenarios. */
           if (ESC.state.over) return null;
           ESC.state.advanceScene(idx);
           return ESC.engine.runScene(ESC.script[name]);
@@ -77,10 +82,16 @@ ESC.main = (function () {
     }
 
     return chain.then(function () {
-      /* If a choice triggered sudden death, play that tail instead. */
-      if (ESC.state.outcome === 'suddenDeath') {
+      /* A Sudden Ending skips straight to the epilogue — same "failed to
+         get fired" ending as the full playthrough, just reached early.
+         Clear `over` first so the epilogue's own beats actually play
+         instead of being skipped by the same guard that just stopped the
+         remaining scenarios above. */
+      if (ESC.state.outcome === 'suddenEnding') {
         ESC.ui.hideInput();
-        return ESC.engine.runScene(ESC.script.suddenDeath);
+        ESC.state.over = false;
+        ESC.state.advanceScene(scenes.indexOf('epilogue'));
+        return ESC.engine.runScene(ESC.script.epilogue);
       }
       return null;
     });
@@ -94,7 +105,16 @@ ESC.main = (function () {
     ESC.ui.syncChrome();
 
     return titleCard()
-      .then(function () { return ESC.script.login(); })
+      .then(function () {
+        if (SKIP_INTRO) {
+          ESC.state.record('name', 'Jamie');
+          ESC.ui.show('game');
+          ESC.ui.clearTerminal();
+          ESC.ui.showChrome();
+          return null;
+        }
+        return ESC.script.login();
+      })
       .then(function () { return playFrom(0); })
       .catch(function (err) {
         console.error('[ESC] run failed:', err);
@@ -104,7 +124,7 @@ ESC.main = (function () {
 
   /* ======================================================================
      RESTART — "The game shows a button to click to restart the game."
-     Skips the title card and login; you keep your name and your photo.
+     Skips the title card and login; you keep your name.
      ==================================================================== */
 
   function restart() {
@@ -129,8 +149,6 @@ ESC.main = (function () {
       opts = opts || {};
       started = true;
       if (!ESC.state.ledger.name) ESC.state.record('name', opts.name || 'Jamie');
-      ESC.ui.setPortrait(ESC.ui.makePortrait(ESC.state.ledger.name + '|cam'));
-      ESC.ui.renderIdPanel();
       ESC.ui.show('game');
       ESC.ui.clearTerminal();
       ESC.ui.showChrome();
@@ -145,6 +163,17 @@ ESC.main = (function () {
         return Promise.resolve();
       }
       return playFrom(idx);
+    },
+
+    /* Drop straight into a scene's open-input box, skipping its A/B/C menu —
+       for iterating on the LLM prompts without re-navigating each time. */
+    testOpenInput: function (sceneKey, opts) {
+      opts = opts || {};
+      started = true;
+      if (!ESC.state.ledger.name) ESC.state.record('name', opts.name || 'Jamie');
+      ESC.ui.show('game');
+      ESC.ui.showChrome();
+      return ESC.engine.openInput({ scene: sceneKey, fallback: opts.fallback || [] });
     },
 
     /* Inspect how the responder reads a line, without playing a turn. */

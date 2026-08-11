@@ -1,7 +1,7 @@
-# FIRE(ESC)APE
+# KING OF THE OFFICE
 
-A text-narration world-exploration game, built from `brainstorm.pdf`
-(Aug 9 2026 revision). By Chelsea Han & Tiffany Quon.
+A text-narration world-exploration game, built from `brainstorm.pdf` and kept
+in sync with it. By Chelsea Han & Tiffany Quon.
 
 You are Jamie, a product manager at Replak.ai. It is another Thursday. You have
 spent 50 hours in the office this week, Project Porcupine is going sideways, and
@@ -13,16 +13,18 @@ So you are going to get fired. It can't be that hard.
 It is extremely hard. Every choice you make, including the deliberately awful
 ones, is metabolised by the office into praise. Blame a colleague and he thanks
 you for the growth opportunity. Confess a felony to the CEO and you are
-promoted. **The two `SUDDEN DEATH` branches are the model-employee answers** —
-picking one ends the run early, because here, being a good employee is how you
-lose.
+promoted. **The two `Sudden Ending` branches are the model-employee answers** —
+picking one skips straight to the epilogue, because here, being a good
+employee is how you lose.
 
 ---
 
 ## Running it
 
-**Just open `index.html`.** Double-click it. There is no build step, no
-dependencies, no server, and no API key. It runs from `file://`.
+**Just open `index.html`.** Double-click it. There is no build step and no
+dependencies. It runs from `file://` — the open-input scenes just fall back to
+the scripted responses in `content/responses.js` instead of calling the model
+(see "The responder" below).
 
 If you'd rather serve it:
 
@@ -32,6 +34,26 @@ python3 -m http.server 8000 --directory game1
 ```
 
 Tested end-to-end in Chrome. Any modern browser should work.
+
+### Running with the real LLM responses
+
+The open-input scenes call Claude through a Netlify serverless function
+(`netlify/functions/respond.js`), so the API key never reaches the browser.
+To test that locally:
+
+```bash
+npm install -g netlify-cli   # once
+npm install                  # installs @anthropic-ai/sdk for the function
+cp .env.example .env         # then fill in ANTHROPIC_API_KEY
+netlify dev
+# → serves game1/ + the function together, usually at http://localhost:8888
+```
+
+**To deploy:** push this repo to GitHub, connect it at
+[app.netlify.com](https://app.netlify.com) ("Import from Git"), and add
+`ANTHROPIC_API_KEY` under Site settings → Environment variables. `netlify.toml`
+at the repo root already points the build at `game1/` and the function at
+`netlify/functions/`, so no build config is needed in the dashboard.
 
 ---
 
@@ -173,12 +195,12 @@ toggle bottom-left, and the game degrades silently if Web Audio is unavailable.
 |---|---|
 | `typingStart` / `typingIntensify` / `typingStop` | the office typing around you, thickening on cue |
 | `deepBop` | the dead-pan monotone drone the brief asks for |
-| `bootBops` / `shutter` | login beep-bops; the camera taking your photo |
-| `slackPing` | two-tone ping + a JERRY notification sliding in |
+| `bootBops` | login beep-bops as the terminal boots into gameplay |
+| `slackPing` | two-tone ping (sound only — no on-screen notification) |
 | `warning` | the Replak.AI alarm buzz and screen wash |
 | `absorb` | the small chime of something awful being praised |
 | `staticFlip` | the cut to seventeen years later |
-| `clockOut` / `flatline` | the ending; the sudden death |
+| `clockOut` | the epilogue's ending beat, "You failed to get fired" |
 
 **To add a cue:** write a function in `EFFECTS` in `js/fx.js`, then name it from
 the script. Nothing else changes.
@@ -189,11 +211,27 @@ terminal by accident.
 
 ---
 
-## The responder (there is no LLM)
+## The responder
 
-The brief calls for a model at each `<Open input response:>`. This build has
-none, so `js/responder.js` does the job deterministically — and its job here is
-the **opposite** of a normal dialogue system. From the doc:
+The brief calls for a model at each `<Open input response:>`. `js/responder.js`
+now calls one: real input is sent to `js/llm.js`, which posts it to the Netlify
+function (`netlify/functions/respond.js`), which asks Claude Haiku 4.5 to
+write 1-3 in-character lines back (structured output, so the shape is always
+`[{speaker, text}]`). The per-scenario constraints, shared rules, style guide,
+and world facts fed to the model all live in
+`netlify/functions/scenePrompts.js` — content, not logic, kept in sync with
+`brainstorm.pdf`. If the call fails for any reason — offline, no key
+configured, function not deployed — `responder.js` falls back to the scripted
+pools in `content/responses.js`, so the game never breaks.
+
+Nonsense detection stays local (`isNonsense` in `js/responder.js`) — no need to
+spend a model call on gibberish before falling back to the A/B options. The
+model has its own version of the same escape hatch: if it judges the input
+truly unworkable even leaning on all its rules, it returns `cannot_justify`
+instead of lines, and `responder.js` routes that to the same A/B fallback.
+
+Its job is the **opposite** of a normal dialogue system, whether the scripted
+fallback or the model is answering. From the doc:
 
 > "No matter what the player inputs, it should be incorporated in the story.
 > Find a way to justify what the player is doing. No matter what the player
@@ -218,10 +256,14 @@ to it:
 
 Two restrictions from the doc's Gameplay notes are enforced:
 
-- **One turn, then back on script.** Every verdict resolves immediately.
+- **One turn, then back on script.** Every verdict resolves immediately — the
+  model is told this explicitly too (never end on a question), so its own
+  writing doesn't fight the game code's guarantee.
 - **"If an action can't be justified, give players only options of A or B that
-  would get them back on track."** Unparseable input is rejected by the system
-  and the scene hands you its A/B options instead.
+  would get them back on track."** Enforced twice: locally for obvious
+  gibberish (`isNonsense`, before any model call), and by the model itself
+  (`cannot_justify`) for input that passes that filter but still can't be
+  spun. Either way, the scene hands you its A/B options instead.
 
 **Tuning lever:** adding a keyword to `content/world.js` teaches the game that
 word, because grounding is what distinguishes a specific reply from a generic
@@ -231,13 +273,18 @@ one. Prose lives in `content/responses.js`, keyed by scene and register.
 
 ## Endings
 
-- **THE END** — you reach the epilogue. Seventeen years later, penthouse,
-  CEO tomorrow. *"You failed to get fired."*
-- **SUDDEN DEATH ×2** — carry Rachel's coffee, or own the feature in the
-  meeting. Both are the good-employee answer; both end the run on the spot with
-  a promotion and a `[ PLAY AGAIN ]` button.
+There's only one ending — *"You failed to get fired."* — reached one of two ways:
 
-Restarting keeps your name and photo and drops you back at 4:00PM.
+- **The full playthrough** — you make it through all five scenarios to the
+  epilogue. Seventeen years later, penthouse, CEO tomorrow.
+- **Sudden Ending ×2** — carry Rachel's coffee, or own the feature in the
+  meeting. Both are the good-employee answer, and both skip straight to that
+  same epilogue instead of playing out the rest of the story — a promotion
+  early, instead of late.
+
+Either way it ends on `THE END` and a `[ PLAY AGAIN ]` button.
+
+Restarting drops you back at 4:00PM.
 
 ---
 
@@ -246,26 +293,32 @@ Restarting keeps your name and photo and drops you back at 4:00PM.
 `window.ESC.debug` is available in the console:
 
 ```js
-ESC.debug.jumpTo('scenario3')      // skip ahead; see ESC.debug.scenes()
-ESC.debug.classify('your text')    // how the responder reads a line
-ESC.debug.reply('s1', 'rude')      // preview a scene's reply to a register
-ESC.debug.ledger()                 // every decision recorded so far
-ESC.debug.restart()                // replay without reloading
+ESC.debug.jumpTo('scenario3')          // skip ahead; see ESC.debug.scenes()
+ESC.debug.testOpenInput('s2')          // jump straight to a scene's open-input box,
+                                        // skipping its A/B/C menu — for iterating on
+                                        // the LLM prompts without re-navigating
+ESC.debug.classify('your text')        // how the responder reads a line
+ESC.debug.reply('s1', 'rude')          // preview a scene's scripted-fallback reply
+ESC.debug.ledger()                     // every decision recorded so far
+ESC.debug.restart()                    // replay without reloading
 ```
 
 ---
 
 ## Known scope
 
-- **Scenario 0 is not implemented.** The doc (p7) carries only the heading
-  *"SCENARIO 0 BEGINS - leadership leads want ROI (meeting)"* and the note
-  *"Meeting where (put into top narrative)"*. `S.scenario0` is an empty array in
-  `content/script.js`; `main.js` skips empty scenes automatically, so adding
-  beats there is all that's needed to bring it in.
-- **No HP or time gauges.** The rules page still describes them, but the new
-  script has no HP, its clock is fixed narrative stamps, and it deliberately
-  runs past 5:00PM. The caption bar and progress bar replace them, per the new
-  Gameplay note.
-- The camera is **simulated** — a fake permission dialog and viewfinder, then a
-  procedural ASCII portrait seeded from the name you type. Deterministic: the
-  same name always makes the same face. No real webcam is requested.
+- **Scenario 0 is not specified.** The current doc doesn't carry a Scenario 0
+  section. `S.scenario0` is an empty array in `content/script.js`; `main.js`
+  skips empty scenes automatically, so adding beats there is all that's needed
+  if it comes back.
+- **No HP or time gauges, and no ID panel.** The rules page originally
+  described an HP/Time gauge pair and a top-left photo/stats panel; both were
+  dropped. The clock is fixed narrative stamps and the game deliberately runs
+  past 5:00PM — the caption bar and progress bar cover that. The main layout
+  is just the terminal: story text and player input, full width.
+- **No name entry or camera capture.** The rules page originally described a
+  "type your name" prompt and a fake camera-permission + photo-capture
+  sequence during login; both were cut. Login now goes straight from the
+  title card to a single "Welcome back, [player]" system message, then boots
+  into gameplay. The protagonist is always Jamie — `[player]` already falls
+  back to that name when `ledger.name` is unset, which it now always is.

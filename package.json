@@ -1,0 +1,8 @@
+{
+  "name": "escape-the-office",
+  "private": true,
+  "description": "KING OF THE OFFICE — serverless backend for the open-input LLM responses",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0"
+  }
+}

@@ -1,0 +1,7 @@
+[build]
+  publish = "game1"
+  functions = "netlify/functions"
+
+[dev]
+  publish = "game1"
+  functions = "netlify/functions"
